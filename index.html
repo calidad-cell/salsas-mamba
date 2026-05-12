@@ -328,7 +328,27 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 .cost-total-label{font-size:14px;font-weight:800}
 .cost-total-val{font-size:20px;font-weight:900;color:var(--accent)}
 
-/* ── ADD DASHED ── */
+/* ── MOVEMENT MAIN TABS ── */
+.mov-main-tab{
+  padding:12px;border-radius:var(--radius-sm);border:1.5px solid var(--border);
+  background:transparent;color:var(--muted2);font-family:var(--font);font-size:14px;font-weight:800;
+  cursor:pointer;transition:all .15s;text-align:center;
+}
+.mov-main-tab:active{transform:scale(0.96)}
+.mov-main-tab.active-tab{background:var(--navy);color:#fff;border-color:var(--navy);box-shadow:0 3px 10px rgba(15,76,138,0.25)}
+.mov-type-btn.sel-venta{background:rgba(26,127,212,0.12);color:var(--accent);border-color:rgba(26,127,212,0.35)}
+
+/* ── FORMATO ITEM ── */
+.formato-item{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;
+  background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;
+}
+.formato-label{flex:1;font-size:14px;font-weight:700}
+.formato-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.formato-input{width:70px;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;
+  text-align:center;font-family:var(--font);font-size:16px;font-weight:800;color:var(--accent);
+  padding:8px 6px;outline:none;}
+.formato-input:focus{border-color:var(--accent)}
 .add-dashed{
   border:2px dashed var(--border);border-radius:var(--radius-sm);padding:12px;
   text-align:center;color:var(--accent);font-size:14px;font-weight:700;
@@ -433,19 +453,177 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
       <div class="card-title">Actividad Reciente</div>
       <div id="dash-history"></div>
     </div>
+
+    <div class="card">
+      <div class="card-title">🛒 Salidas del Día</div>
+      <div id="dash-ventas-hoy"></div>
+    </div>
   </div>
 
   <!-- ▌ MOVIMIENTOS ▌ -->
   <div class="screen" id="s-movimientos">
     <div class="screen-title">Entradas / Salidas</div>
-    <div class="screen-sub">Registra movimientos de insumos</div>
+    <div class="screen-sub">Registra movimientos de insumos y productos</div>
 
-    <div id="mov-list"></div>
-    <div class="add-dashed" onclick="addMovRow()">+ Agregar otro insumo</div>
+    <!-- TIPO DE MOVIMIENTO PRINCIPAL -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+      <button id="tab-insumos" class="mov-main-tab active-tab" onclick="setMovTab('insumos')">🧂 Insumos</button>
+      <button id="tab-produccion" class="mov-main-tab" onclick="setMovTab('produccion')">⚙️ Producción</button>
+      <button id="tab-productos" class="mov-main-tab" onclick="setMovTab('productos')">🍶 Salidas</button>
+    </div>
 
-    <div style="display:flex;gap:10px;margin-bottom:20px">
-      <button class="btn btn-primary btn-full" onclick="submitMov()">✓ Registrar</button>
-      <button class="btn btn-ghost" style="width:100px" onclick="clearMov()">Limpiar</button>
+    <!-- PANEL INSUMOS -->
+    <div id="panel-insumos">
+      <div id="mov-list"></div>
+      <div class="add-dashed" onclick="addMovRow()">+ Agregar otro insumo</div>
+      <div style="display:flex;gap:10px;margin-bottom:20px">
+        <button class="btn btn-primary btn-full" onclick="submitMov()">✓ Registrar</button>
+        <button class="btn btn-ghost" style="width:100px" onclick="clearMov()">Limpiar</button>
+      </div>
+    </div>
+
+    <!-- PANEL PRODUCCIÓN -->
+    <div id="panel-produccion" style="display:none">
+      <div class="mov-card" style="margin-bottom:12px">
+
+        <div class="form-group">
+          <label class="form-label">Salsa Producida</label>
+          <select class="form-select" id="prod-rec-sel" onchange="onProdRecChange()">
+            <option value="">— Seleccionar salsa —</option>
+          </select>
+        </div>
+
+        <!-- Modo cantidad -->
+        <div style="margin-bottom:10px">
+          <label class="form-label">Modo de Registro</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
+            <button id="prod-modo-unidades" class="mov-type-btn sel-in" onclick="setProdModo('unidades')">📦 Por Unidades</button>
+            <button id="prod-modo-litros" class="mov-type-btn" onclick="setProdModo('litros')">🧴 Por Litros/KG</button>
+          </div>
+        </div>
+
+        <!-- Por unidades -->
+        <div id="prod-unidades-form">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <label class="form-label" style="margin:0">Envases Producidos</label>
+            <button class="btn btn-ghost btn-sm" onclick="addProdFormatoRow()">+ Añadir fila</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 90px 60px 36px;gap:6px;padding:0 4px;margin-bottom:4px">
+            <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Formato (g o ml)</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;text-align:center">Cantidad</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;text-align:center">Total</div>
+            <div></div>
+          </div>
+          <div id="prod-formatos-list"></div>
+          <div id="prod-formatos-total" style="display:none;padding:8px 12px;background:rgba(24,184,112,0.08);border-radius:8px;margin-top:6px;font-size:13px;font-weight:700;color:var(--green);text-align:right"></div>
+        </div>
+
+        <!-- Por litros/kg -->
+        <div id="prod-litros-form" style="display:none">
+          <div class="form-group">
+            <label class="form-label" id="prod-litros-label">Cantidad producida (L / KG)</label>
+            <input class="form-input" type="number" id="prod-rec-qty" min="0" step="0.01" placeholder="ej: 13">
+          </div>
+        </div>
+
+        <!-- Descuenta ingredientes -->
+        <div style="margin:10px 0;padding:10px 12px;background:rgba(14,165,160,0.07);border:1px solid rgba(14,165,160,0.2);border-radius:var(--radius-sm)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="prod-descontar" style="width:18px;height:18px;accent-color:var(--teal)" checked>
+            <label for="prod-descontar" style="font-size:13px;font-weight:700;color:var(--teal)">Descontar ingredientes del stock automáticamente</label>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;margin-left:26px">Usa el factor unitario de la receta para calcular el descuento</div>
+        </div>
+
+        <!-- Preview ingredientes -->
+        <div id="prod-rec-preview" style="display:none;margin-top:8px">
+          <div class="card-title" style="font-size:11px">🧮 Ingredientes que se descontarán</div>
+          <div id="prod-rec-ing-list"></div>
+        </div>
+
+        <div class="form-group" style="margin-top:8px">
+          <label class="form-label">Nota (opcional)</label>
+          <input class="form-input" type="text" id="prod-rec-nota" placeholder="ej: lote, turno...">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:20px">
+        <button class="btn btn-teal btn-full" onclick="submitProduccion()">⚙️ Registrar Producción</button>
+        <button class="btn btn-ghost" style="width:100px" onclick="clearProdRec()">Limpiar</button>
+      </div>
+    </div>
+
+    <!-- PANEL PRODUCTOS -->
+    <div id="panel-productos" style="display:none">
+      <div class="mov-card" style="margin-bottom:12px">
+
+        <!-- Tipo salida: venta o merma -->
+        <div style="margin-bottom:12px">
+          <label class="form-label">Tipo de Salida</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
+            <button id="tipo-venta" class="mov-type-btn sel-venta" onclick="setTipoSalida('venta')">🛒 Venta</button>
+            <button id="tipo-merma" class="mov-type-btn" onclick="setTipoSalida('merma')">🗑 Merma</button>
+          </div>
+        </div>
+
+        <!-- Selección de salsa -->
+        <div class="form-group">
+          <label class="form-label">Salsa</label>
+          <select class="form-select" id="prod-salsa" onchange="onProdSalsaChange()">
+            <option value="">— Seleccionar salsa —</option>
+          </select>
+        </div>
+
+        <!-- Modo de cantidad -->
+        <div style="margin-bottom:10px">
+          <label class="form-label">Modo de Registro</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
+            <button id="modo-unidades" class="mov-type-btn sel-in" onclick="setModoQty('unidades')">📦 Por Unidades</button>
+            <button id="modo-litros" class="mov-type-btn" onclick="setModoQty('litros')">🧴 Por Litros/KG</button>
+          </div>
+        </div>
+
+        <!-- Por unidades: filas manuales de formato + cantidad -->
+        <div id="modo-unidades-form">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <label class="form-label" style="margin:0">Detalle de Envases</label>
+            <button class="btn btn-ghost btn-sm" onclick="addFormatoRow()">+ Añadir fila</button>
+          </div>
+          <!-- encabezado -->
+          <div style="display:grid;grid-template-columns:1fr 90px 60px 36px;gap:6px;padding:0 4px;margin-bottom:4px">
+            <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Formato (g o ml)</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;text-align:center">Cantidad</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;text-align:center">Total</div>
+            <div></div>
+          </div>
+          <div id="formatos-list"></div>
+          <div id="formatos-total" style="display:none;padding:8px 12px;background:rgba(26,127,212,0.07);border-radius:8px;margin-top:6px;font-size:13px;font-weight:700;color:var(--accent);text-align:right"></div>
+        </div>
+
+        <!-- Por litros/kg -->
+        <div id="modo-litros-form" style="display:none">
+          <div class="form-group">
+            <label class="form-label" id="litros-label">Cantidad (L / KG)</label>
+            <input class="form-input" type="number" id="prod-litros" min="0" step="0.01" placeholder="ej: 2.5" oninput="updateIngPreview()">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:8px">
+          <label class="form-label">Nota (opcional)</label>
+          <input class="form-input" type="text" id="prod-nota" placeholder="ej: cliente, motivo...">
+        </div>
+      </div>
+
+      <!-- Preview descuento ingredientes -->
+      <div id="prod-descuento-preview" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px">
+        <div class="card-title">🧮 Ingredientes que se descontarán</div>
+        <div id="prod-ing-preview"></div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:20px">
+        <button class="btn btn-primary btn-full" onclick="submitProdSalida()">✓ Registrar Salida</button>
+        <button class="btn btn-ghost" style="width:100px" onclick="clearProdForm()">Limpiar</button>
+      </div>
     </div>
 
     <div class="section-header">
@@ -808,27 +986,380 @@ function renderDash() {
   document.getElementById('dash-history').innerHTML = recent.length===0
     ? '<div style="color:var(--muted);font-size:14px;text-align:center;padding:12px">Sin movimientos aún</div>'
     : recent.map(h=>histRow(h)).join('');
+
+  // ventas del día
+  const hoy = new Date().toDateString();
+  const ventasHoy = DB.history.filter(h=>h.type==='venta'&&new Date(h.date).toDateString()===hoy);
+  const mermasHoy = DB.history.filter(h=>h.type==='merma'&&new Date(h.date).toDateString()===hoy);
+  const totalVentaKg = ventasHoy.reduce((s,h)=>s+(h.items[0]?.qty||0),0);
+  const totalMermaKg = mermasHoy.reduce((s,h)=>s+(h.items[0]?.qty||0),0);
+
+  if(ventasHoy.length===0&&mermasHoy.length===0) {
+    document.getElementById('dash-ventas-hoy').innerHTML =
+      '<div style="color:var(--muted);font-size:14px;text-align:center;padding:12px">Sin salidas registradas hoy</div>';
+  } else {
+    // Agrupar por salsa
+    const byRecipe = {};
+    [...ventasHoy,...mermasHoy].forEach(h=>{
+      const key=h.items[0]?.nombre||'?';
+      if(!byRecipe[key]) byRecipe[key]={nombre:key,ventas:0,mermas:0,icon:RECIPE_ICONS[h.recipeId]||'🍶',unit:h.items[0]?.unidad||'KG'};
+      if(h.type==='venta') byRecipe[key].ventas+=h.items[0]?.qty||0;
+      else byRecipe[key].mermas+=h.items[0]?.qty||0;
+    });
+    document.getElementById('dash-ventas-hoy').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:rgba(24,184,112,0.08);border:1px solid rgba(24,184,112,0.2);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:10px;color:var(--green);font-weight:800;text-transform:uppercase;letter-spacing:0.5px">Ventas hoy</div>
+          <div style="font-size:22px;font-weight:900;color:var(--green)">${totalVentaKg.toFixed(2)}</div>
+          <div style="font-size:11px;color:var(--muted)">${ventasHoy.length} registro(s)</div>
+        </div>
+        <div style="background:rgba(224,80,80,0.07);border:1px solid rgba(224,80,80,0.15);border-radius:10px;padding:12px;text-align:center">
+          <div style="font-size:10px;color:var(--danger);font-weight:800;text-transform:uppercase;letter-spacing:0.5px">Mermas hoy</div>
+          <div style="font-size:22px;font-weight:900;color:var(--danger)">${totalMermaKg.toFixed(2)}</div>
+          <div style="font-size:11px;color:var(--muted)">${mermasHoy.length} registro(s)</div>
+        </div>
+      </div>
+      ${Object.values(byRecipe).map(rc=>`
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:10px;margin-bottom:8px;border:1px solid var(--border)">
+          <div style="font-size:22px">${rc.icon}</div>
+          <div style="flex:1"><div style="font-size:14px;font-weight:700">${cap(rc.nombre)}</div></div>
+          ${rc.ventas>0?`<div style="text-align:center;padding:4px 10px;background:rgba(24,184,112,0.1);border-radius:7px"><div style="font-size:11px;color:var(--green);font-weight:700">Venta</div><div style="font-size:14px;font-weight:800;color:var(--green)">${rc.ventas.toFixed(3)} ${rc.unit}</div></div>`:''}
+          ${rc.mermas>0?`<div style="text-align:center;padding:4px 10px;background:rgba(224,80,80,0.08);border-radius:7px"><div style="font-size:11px;color:var(--danger);font-weight:700">Merma</div><div style="font-size:14px;font-weight:800;color:var(--danger)">${rc.mermas.toFixed(3)} ${rc.unit}</div></div>`:''}
+        </div>`).join('')}`;
+  }
 }
 
 function histRow(h) {
-  const ic={entrada:'⬆️',salida:'⬇️',produccion:'⚙️'};
-  const cl={entrada:'in',salida:'out',produccion:'prod'};
-  const lb={entrada:'Entrada',salida:'Salida',produccion:'Producción'};
+  const ic={entrada:'⬆️',salida:'⬇️',produccion:'⚙️',venta:'🛒',merma:'🗑️'};
+  const cl={entrada:'in',salida:'out',produccion:'prod',venta:'out',merma:'out'};
+  const lb={entrada:'Entrada insumo',salida:'Salida insumo',produccion:'Producción',venta:'Venta producto',merma:'Merma producto'};
   const c=cl[h.type]||'in';
-  const txt=h.items.slice(0,2).map(i=>`${cap(i.nombre)} (${i.qty} ${i.unidad})`).join(', ')+(h.items.length>2?` +${h.items.length-2} más`:'');
+  const txt = h.note || h.items.slice(0,2).map(i=>`${cap(i.nombre)} (${i.qty} ${i.unidad})`).join(', ')+(h.items.length>2?` +${h.items.length-2} más`:'');
   return `<div class="hist-item">
     <div class="hist-dot ${c}">${ic[h.type]||'·'}</div>
-    <div class="hist-body"><div class="hist-name">${txt}</div><div class="hist-meta">${lb[h.type]||h.type} · ${fmtD(h.date)}${h.note?' · '+h.note:''}</div></div>
-    <div class="hist-badge ${c}">${h.type==='entrada'?'+':h.type==='salida'?'−':'●'}${h.items.length}</div>
+    <div class="hist-body"><div class="hist-name" style="white-space:normal;font-size:12px">${txt}</div><div class="hist-meta">${lb[h.type]||h.type} · ${fmtD(h.date)}</div></div>
   </div>`;
 }
 
 // ═══════ MOVIMIENTOS ═══════
 let movRows = [];
+let movTab = 'insumos';
+let tipoSalida = 'venta';
+let modoQty = 'unidades';
+let formatoRows = [{gramos:'500', cantidad:''}];
+
+function setMovTab(tab) {
+  movTab = tab;
+  document.getElementById('panel-insumos').style.display     = tab==='insumos'    ?'block':'none';
+  document.getElementById('panel-produccion').style.display  = tab==='produccion' ?'block':'none';
+  document.getElementById('panel-productos').style.display   = tab==='productos'  ?'block':'none';
+  document.getElementById('tab-insumos').classList.toggle('active-tab',    tab==='insumos');
+  document.getElementById('tab-produccion').classList.toggle('active-tab', tab==='produccion');
+  document.getElementById('tab-productos').classList.toggle('active-tab',  tab==='productos');
+  if(tab==='productos')   drawProdPanel();
+  if(tab==='produccion')  drawProdRecPanel();
+}
+
+// ── PANEL PRODUCCIÓN ──
+let prodModo = 'unidades';
+let prodFormatoRows = [{gramos:'500', cantidad:''}];
+
+function drawProdRecPanel() {
+  const sel = document.getElementById('prod-rec-sel');
+  if(sel.options.length <= 1) {
+    Object.values(DB.recipes).forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.id; o.textContent = `${RECIPE_ICONS[r.id]||'🍶'} ${r.nombre}`;
+      sel.appendChild(o);
+    });
+  }
+  drawProdFormatoRows();
+}
+
+function onProdRecChange() {
+  const id = document.getElementById('prod-rec-sel').value;
+  const b = BATCH[id];
+  if(b) document.getElementById('prod-litros-label').textContent = `Cantidad producida (${b.unit})`;
+  drawProdFormatoRows();
+  updateProdRecPreview();
+}
+
+function setProdModo(modo) {
+  prodModo = modo;
+  document.getElementById('prod-unidades-form').style.display  = modo==='unidades'?'block':'none';
+  document.getElementById('prod-litros-form').style.display    = modo==='litros'  ?'block':'none';
+  document.getElementById('prod-modo-unidades').className = `mov-type-btn ${modo==='unidades'?'sel-in':''}`;
+  document.getElementById('prod-modo-litros').className   = `mov-type-btn ${modo==='litros'  ?'sel-in':''}`;
+  updateProdRecPreview();
+}
+
+function addProdFormatoRow() { prodFormatoRows.push({gramos:'',cantidad:''}); drawProdFormatoRows(); }
+function delProdFormatoRow(i) { prodFormatoRows.splice(i,1); if(!prodFormatoRows.length) prodFormatoRows=[{gramos:'',cantidad:''}]; drawProdFormatoRows(); }
+
+function drawProdFormatoRows() {
+  const id = document.getElementById('prod-rec-sel').value;
+  const b = BATCH[id]; const isLiquid = b && b.unit==='L';
+  document.getElementById('prod-formatos-list').innerHTML = prodFormatoRows.map((f,i)=>{
+    const g=parseFloat(f.gramos)||0; const q=parseInt(f.cantidad)||0; const tg=g*q;
+    const disp=tg>=1000?(tg/1000).toFixed(3)+' '+(isLiquid?'L':'KG'):tg>0?tg+'g':'—';
+    return `<div style="display:grid;grid-template-columns:1fr 90px 60px 36px;gap:6px;align-items:center;margin-bottom:8px">
+      <div style="position:relative">
+        <input class="form-input" type="number" min="1" step="1" value="${f.gramos}"
+          placeholder="${isLiquid?'ml':'g'} (ej: 500)" style="padding-right:32px"
+          oninput="prodFormatoRows[${i}].gramos=this.value;updateProdFormatoTotal();updateProdRecPreview()">
+        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);font-weight:700">${isLiquid?'ml':'g'}</span>
+      </div>
+      <input class="form-input" type="number" min="0" step="1" value="${f.cantidad}" placeholder="0"
+        style="text-align:center;font-size:16px;font-weight:800;color:var(--teal)"
+        oninput="prodFormatoRows[${i}].cantidad=this.value;updateProdFormatoTotal();updateProdRecPreview()">
+      <div style="text-align:center;font-size:11px;font-weight:700;color:var(--teal)">${disp}</div>
+      <button class="btn btn-danger btn-icon" style="width:36px;height:36px;font-size:14px" onclick="delProdFormatoRow(${i})">✕</button>
+    </div>`;
+  }).join('');
+  updateProdFormatoTotal();
+}
+
+function updateProdFormatoTotal() {
+  const id=document.getElementById('prod-rec-sel').value;
+  const b=BATCH[id]; const isLiquid=b&&b.unit==='L';
+  const totalG=prodFormatoRows.reduce((s,f)=>(parseFloat(f.gramos)||0)*(parseInt(f.cantidad)||0)+s,0);
+  const el=document.getElementById('prod-formatos-total');
+  if(totalG>0){
+    const units=prodFormatoRows.reduce((s,f)=>s+(parseInt(f.cantidad)||0),0);
+    el.style.display='block';
+    el.innerHTML=`✓ Total producido: <b>${(totalG/1000).toFixed(3)} ${isLiquid?'L':'KG'}</b> en <b>${units} envase(s)</b>`;
+  } else { el.style.display='none'; }
+}
+
+function getTotalProdKg() {
+  return r3(prodFormatoRows.reduce((s,f)=>(parseFloat(f.gramos)||0)*(parseInt(f.cantidad)||0)+s,0)/1000);
+}
+
+function updateProdRecPreview() {
+  const id = document.getElementById('prod-rec-sel').value;
+  const descontar = document.getElementById('prod-descontar')?.checked;
+  if(!id||!descontar){ document.getElementById('prod-rec-preview').style.display='none'; return; }
+  const total = prodModo==='unidades' ? getTotalProdKg() : parseFloat(document.getElementById('prod-rec-qty').value)||0;
+  if(total<=0){ document.getElementById('prod-rec-preview').style.display='none'; return; }
+  const r=DB.recipes[id]; const b=BATCH[id]; if(!r||!b)return;
+  const lines = r.ingredientes.map(ing=>{
+    const fu=ing.fu||(ing.cantidad/b.output); const needed=r3(fu*total);
+    const k=ing.nombre.toLowerCase().trim(); const idb=DB.ingredients[k];
+    const u=(ing.unidad||'').toUpperCase(); const needKg=u==='GRS'?needed/1000:needed;
+    const ok=idb?idb.stock>=needKg:false;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:${ok?'#f0fff8':'#fff5f5'};border-radius:8px;margin-bottom:5px;border:1px solid ${ok?'rgba(24,184,112,0.2)':'rgba(224,80,80,0.2)'}">
+      <div><div style="font-size:13px;font-weight:700">${cap(ing.nombre)}</div><div style="font-size:10px;color:var(--muted)">${idb?'stock: '+idb.stock+' '+idb.unidad:'sin registro'}</div></div>
+      <div style="font-size:14px;font-weight:800;color:${ok?'var(--green)':'var(--danger)'}">−${needed} ${ing.unidad}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('prod-rec-ing-list').innerHTML = `<div style="font-size:12px;color:var(--muted2);margin-bottom:8px;font-weight:600">Para <b>${total} ${b.unit}</b> de ${r.nombre}:</div>${lines}`;
+  document.getElementById('prod-rec-preview').style.display = 'block';
+}
+
+function submitProduccion() {
+  const id = document.getElementById('prod-rec-sel').value;
+  if(!id){toast('Selecciona una salsa','error');return;}
+  const descontar = document.getElementById('prod-descontar').checked;
+  let total=0; let detalle='';
+  if(prodModo==='unidades'){
+    total=getTotalProdKg();
+    const parts=prodFormatoRows.map(f=>{const q=parseInt(f.cantidad)||0;return q>0?`${q}×${f.gramos}${BATCH[id]?.unit==='L'?'ml':'g'}`:''}).filter(Boolean);
+    detalle=parts.join(', ');
+  } else {
+    total=parseFloat(document.getElementById('prod-rec-qty').value)||0;
+    detalle=`${total} ${BATCH[id]?.unit||'KG'}`;
+  }
+  if(total<=0){toast('Ingresa una cantidad mayor a 0','error');return;}
+  const r=DB.recipes[id]; const b=BATCH[id]; const nota=document.getElementById('prod-rec-nota').value.trim();
+
+  // Descontar ingredientes si está activado
+  if(descontar) {
+    let ok=true;
+    r.ingredientes.forEach(ing=>{
+      const fu=ing.fu||(ing.cantidad/b.output); const needed=r3(fu*total);
+      const k=ing.nombre.toLowerCase().trim(); const idb=DB.ingredients[k]; if(!idb)return;
+      const u=(ing.unidad||'').toUpperCase(); const needKg=u==='GRS'?needed/1000:needed;
+      if(idb.stock<needKg){toast(`Stock insuficiente: ${k}`,'error');ok=false;}
+    });
+    if(!ok)return;
+    r.ingredientes.forEach(ing=>{
+      const fu=ing.fu||(ing.cantidad/b.output); const needed=r3(fu*total);
+      const k=ing.nombre.toLowerCase().trim(); const idb=DB.ingredients[k]; if(!idb)return;
+      const u=(ing.unidad||'').toUpperCase(); const needKg=u==='GRS'?needed/1000:needed;
+      idb.stock=r2(idb.stock-needKg);
+    });
+  }
+
+  DB.history.push({
+    id:Date.now(), type:'produccion', subtype:'entrada', recipeId:id,
+    items:[{nombre:r.nombre, qty:total, unidad:b.unit}],
+    date:new Date().toISOString(),
+    note:`Producción ${r.nombre} — ${detalle}${descontar?' (ingredientes descontados)':''}${nota?' — '+nota:''}`
+  });
+  saveDB(); clearProdRec(); drawHistory();
+  toast(`Producción de ${r.nombre} registrada ✓${descontar?' — ingredientes descontados':''}`,'success');
+}
+
+function clearProdRec() {
+  document.getElementById('prod-rec-sel').value='';
+  document.getElementById('prod-rec-nota').value='';
+  if(document.getElementById('prod-rec-qty')) document.getElementById('prod-rec-qty').value='';
+  prodFormatoRows=[{gramos:'500',cantidad:''}];
+  drawProdFormatoRows();
+  document.getElementById('prod-rec-preview').style.display='none';
+  document.getElementById('prod-formatos-total').style.display='none';
+}
+function setTipoSalida(tipo) {
+  tipoSalida = tipo;
+  document.getElementById('tipo-venta').className = `mov-type-btn ${tipo==='venta'?'sel-venta':''}`;
+  document.getElementById('tipo-merma').className = `mov-type-btn ${tipo==='merma'?'sel-out':''}`;
+}
+function setModoQty(modo) {
+  modoQty = modo;
+  document.getElementById('modo-unidades-form').style.display = modo==='unidades'?'block':'none';
+  document.getElementById('modo-litros-form').style.display = modo==='litros'?'block':'none';
+  document.getElementById('modo-unidades').className = `mov-type-btn ${modo==='unidades'?'sel-in':''}`;
+  document.getElementById('modo-litros').className = `mov-type-btn ${modo==='litros'?'sel-in':''}`;
+  const id = document.getElementById('prod-salsa').value;
+  const b = BATCH[id];
+  if(b) document.getElementById('litros-label').textContent = `Cantidad (${b.unit})`;
+  updateIngPreview();
+}
+function drawProdPanel() {
+  const sel = document.getElementById('prod-salsa');
+  if(sel.options.length <= 1) {
+    Object.values(DB.recipes).forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.id; o.textContent = `${RECIPE_ICONS[r.id]||'🍶'} ${r.nombre}`;
+      sel.appendChild(o);
+    });
+  }
+  drawFormatoRows();
+}
+function onProdSalsaChange() {
+  const id = document.getElementById('prod-salsa').value;
+  const b = BATCH[id];
+  if(b) document.getElementById('litros-label').textContent = `Cantidad (${b.unit})`;
+  drawFormatoRows();
+  updateIngPreview();
+}
+
+// ── FILAS MANUALES DE FORMATO ──
+function addFormatoRow() {
+  formatoRows.push({gramos:'', cantidad:''});
+  drawFormatoRows();
+}
+function delFormatoRow(i) {
+  formatoRows.splice(i,1);
+  if(!formatoRows.length) formatoRows=[{gramos:'',cantidad:''}];
+  drawFormatoRows();
+}
+function drawFormatoRows() {
+  const id = document.getElementById('prod-salsa').value;
+  const b = BATCH[id];
+  const isLiquid = b && b.unit==='L';
+  document.getElementById('formatos-list').innerHTML = formatoRows.map((f,i) => {
+    const g=parseFloat(f.gramos)||0; const q=parseInt(f.cantidad)||0;
+    const totalG=g*q;
+    const totalDisp = totalG>=1000?(totalG/1000).toFixed(3)+' '+(isLiquid?'L':'KG'):totalG>0?totalG+'g':'—';
+    return `<div style="display:grid;grid-template-columns:1fr 90px 60px 36px;gap:6px;align-items:center;margin-bottom:8px">
+      <div style="position:relative">
+        <input class="form-input" type="number" min="1" step="1" value="${f.gramos}"
+          placeholder="${isLiquid?'ml':'g'} (ej: 500)" style="padding-right:32px"
+          oninput="formatoRows[${i}].gramos=this.value;updateFormatoTotal();updateIngPreview()">
+        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);font-weight:700">${isLiquid?'ml':'g'}</span>
+      </div>
+      <input class="form-input" type="number" min="0" step="1" value="${f.cantidad}"
+        placeholder="0" style="text-align:center;font-size:16px;font-weight:800;color:var(--accent)"
+        oninput="formatoRows[${i}].cantidad=this.value;updateFormatoTotal();updateIngPreview()">
+      <div style="text-align:center;font-size:11px;font-weight:700;color:var(--teal)">${totalDisp}</div>
+      <button class="btn btn-danger btn-icon" style="width:36px;height:36px;font-size:14px" onclick="delFormatoRow(${i})">✕</button>
+    </div>`;
+  }).join('');
+  updateFormatoTotal();
+}
+function updateFormatoTotal() {
+  const id=document.getElementById('prod-salsa').value;
+  const b=BATCH[id]; const isLiquid=b&&b.unit==='L';
+  const totalG=formatoRows.reduce((s,f)=>(parseFloat(f.gramos)||0)*(parseInt(f.cantidad)||0)+s,0);
+  const el=document.getElementById('formatos-total');
+  if(totalG>0){
+    const units=formatoRows.reduce((s,f)=>s+(parseInt(f.cantidad)||0),0);
+    el.style.display='block';
+    el.innerHTML=`Total: <b>${(totalG/1000).toFixed(3)} ${isLiquid?'L':'KG'}</b> en <b>${units} envase(s)</b>`;
+  } else { el.style.display='none'; }
+}
+function getTotalKgFromFormatos() {
+  return r3(formatoRows.reduce((s,f)=>(parseFloat(f.gramos)||0)*(parseInt(f.cantidad)||0)+s,0)/1000);
+}
+function updateIngPreview() {
+  const id=document.getElementById('prod-salsa').value;
+  if(!id){document.getElementById('prod-descuento-preview').style.display='none';return;}
+  let total=modoQty==='unidades'?getTotalKgFromFormatos():parseFloat(document.getElementById('prod-litros').value)||0;
+  if(total<=0){document.getElementById('prod-descuento-preview').style.display='none';return;}
+  const r=DB.recipes[id]; const b=BATCH[id]; if(!r||!b)return;
+  const lines=r.ingredientes.map(ing=>{
+    const fu=ing.fu||(ing.cantidad/b.output); const needed=r3(fu*total);
+    const k=ing.nombre.toLowerCase().trim(); const idb=DB.ingredients[k];
+    const u=(ing.unidad||'').toUpperCase(); const needKg=u==='GRS'?needed/1000:needed;
+    const ok=idb?idb.stock>=needKg:false;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:${ok?'#f0fff8':'#fff5f5'};border-radius:8px;margin-bottom:6px;border:1px solid ${ok?'rgba(24,184,112,0.2)':'rgba(224,80,80,0.2)'}">
+      <div><div style="font-size:13px;font-weight:700">${cap(ing.nombre)}</div><div style="font-size:10px;color:var(--muted)">${idb?'stock: '+idb.stock+' '+idb.unidad:'sin registro'}</div></div>
+      <div style="font-size:14px;font-weight:800;color:${ok?'var(--green)':'var(--danger)'}">−${needed} ${ing.unidad}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('prod-ing-preview').innerHTML=`<div style="font-size:13px;color:var(--muted2);margin-bottom:8px;font-weight:600">Para <b>${total} ${b.unit}</b> de ${r.nombre}:</div>${lines}`;
+  document.getElementById('prod-descuento-preview').style.display='block';
+}
+function submitProdSalida() {
+  const id=document.getElementById('prod-salsa').value;
+  if(!id){toast('Selecciona una salsa','error');return;}
+  let total=0; let detalle='';
+  if(modoQty==='unidades'){
+    total=getTotalKgFromFormatos();
+    const parts=formatoRows.map(f=>{const q=parseInt(f.cantidad)||0;return q>0?`${q}×${f.gramos}${BATCH[id]?.unit==='L'?'ml':'g'}`:''}).filter(Boolean);
+    detalle=parts.join(', ');
+  } else {
+    total=parseFloat(document.getElementById('prod-litros').value)||0;
+    detalle=`${total} ${BATCH[id]?.unit||'KG'}`;
+  }
+  if(total<=0){toast('Ingresa una cantidad mayor a 0','error');return;}
+  const r=DB.recipes[id]; const b=BATCH[id]; const nota=document.getElementById('prod-nota').value.trim();
+  let ok=true;
+  r.ingredientes.forEach(ing=>{
+    const fu=ing.fu||(ing.cantidad/b.output); const needed=r3(fu*total);
+    const k=ing.nombre.toLowerCase().trim(); const idb=DB.ingredients[k]; if(!idb)return;
+    const u=(ing.unidad||'').toUpperCase(); const needKg=u==='GRS'?needed/1000:needed;
+    if(idb.stock<needKg){toast(`Stock insuficiente: ${k}`,'error');ok=false;}
+  });
+  if(!ok)return;
+  r.ingredientes.forEach(ing=>{
+    const fu=ing.fu||(ing.cantidad/b.output); const needed=r3(fu*total);
+    const k=ing.nombre.toLowerCase().trim(); const idb=DB.ingredients[k]; if(!idb)return;
+    const u=(ing.unidad||'').toUpperCase(); const needKg=u==='GRS'?needed/1000:needed;
+    idb.stock=r2(idb.stock-needKg);
+  });
+  DB.history.push({id:Date.now(),type:tipoSalida,subtype:'producto',recipeId:id,
+    items:[{nombre:r.nombre,qty:total,unidad:b.unit}],
+    date:new Date().toISOString(),
+    note:`${tipoSalida==='venta'?'Venta':'Merma'} ${r.nombre} — ${detalle}${nota?' — '+nota:''}`});
+  saveDB(); clearProdForm(); drawHistory();
+  toast(`${tipoSalida==='venta'?'Venta':'Merma'} de ${r.nombre} registrada ✓`,'success');
+}
+function clearProdForm() {
+  document.getElementById('prod-salsa').value='';
+  document.getElementById('prod-nota').value='';
+  if(document.getElementById('prod-litros')) document.getElementById('prod-litros').value='';
+  formatoRows=[{gramos:'500',cantidad:''}];
+  drawFormatoRows();
+  document.getElementById('prod-descuento-preview').style.display='none';
+  document.getElementById('formatos-total').style.display='none';
+}
 function renderMov() {
   if(!movRows.length) addMovRow();
   else drawMovRows();
   drawHistory();
+  setMovTab(movTab);
 }
 function addMovRow() {
   movRows.push({type:'entrada',ingredient:'',qty:'',note:''});
@@ -982,7 +1513,6 @@ function renderRecipes() {
           <button class="btn btn-ghost btn-sm btn-full" onclick="addRecipeIng('${r.id}')">+ Ingrediente</button>
           <button class="btn btn-primary btn-sm btn-full" onclick="saveRec('${r.id}')">💾 Guardar</button>
         </div>`:''}
-        <button class="prod-btn" onclick="doProduccion('${r.id}')">▶ Registrar Producción — Descontar Stock</button>
       </div>
     </div>`;
   }).join('');
