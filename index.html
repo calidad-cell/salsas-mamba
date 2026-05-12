@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Salsas · Inventario</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #eef5ff;
+  --surface: #ffffff;
+  --surface2: #ddeeff;
+  --border: #c0d8f5;
+  --navy: #0f4c8a;
+  --navy2: #0a3566;
+  --accent: #1a7fd4;
+  --teal: #0ea5a0;
+  --green: #18b870;
+  --sky: #38bdf8;
+  --danger: #e05050;
+  --orange: #f07030;
+  --text: #0f2035;
+  --muted: #5a7a9a;
+  --muted2: #3a5a7a;
+  --font: 'Nunito', sans-serif;
+  --bar-h: 70px;
+  --header-h: 60px;
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--font);color:var(--text)}
+
+/* ── LAYOUT ── */
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+#header{
+  height:var(--header-h);background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 100%);
+  display:flex;align-items:center;justify-content:space-between;padding:0 20px;
+  flex-shrink:0;box-shadow:0 2px 12px rgba(15,76,138,0.25);z-index:20;
+}
+#header-title{font-size:18px;font-weight:800;color:#7dd3fc;display:flex;align-items:center;gap:8px}
+#header-sub{font-size:11px;color:rgba(255,255,255,0.45);margin-top:1px}
+#header-clock{text-align:right}
+#hclock{font-size:16px;font-weight:700;color:#fff}
+#hdate{font-size:10px;color:rgba(255,255,255,0.5);margin-top:1px}
+
+#content{flex:1;overflow:hidden;position:relative}
+.screen{position:absolute;inset:0;overflow-y:auto;padding:16px 16px calc(var(--bar-h) + 16px);display:none;-webkit-overflow-scrolling:touch}
+.screen.active{display:block}
+
+/* ── BOTTOM NAV ── */
+#bottom-nav{
+  height:var(--bar-h);background:var(--navy2);
+  display:flex;align-items:center;justify-content:space-around;
+  flex-shrink:0;padding:0 4px;padding-bottom:env(safe-area-inset-bottom);
+  box-shadow:0 -2px 16px rgba(15,76,138,0.3);z-index:20;
+}
+.nav-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;padding:8px 4px;cursor:pointer;border-radius:var(--radius-sm);
+  transition:all .15s;color:rgba(255,255,255,0.45);
+}
+.nav-btn:active{transform:scale(0.92)}
+.nav-btn.active{color:#7dd3fc;background:rgba(125,211,252,0.12)}
+.nav-icon{font-size:20px;line-height:1}
+.nav-label{font-size:10px;font-weight:700;letter-spacing:0.3px;text-transform:uppercase}
+
+/* ── TYPOGRAPHY ── */
+.screen-title{font-size:22px;font-weight:900;color:var(--text);margin-bottom:4px}
+.screen-sub{font-size:12px;color:var(--muted);margin-bottom:16px}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border-radius:var(--radius);padding:16px;border:1px solid var(--border);margin-bottom:12px}
+.card-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.kpi{border-radius:var(--radius);padding:16px;position:relative;overflow:hidden;border:1px solid transparent}
+.kpi.blue{background:linear-gradient(135deg,#1a7fd4 0%,#1260aa 100%);color:#fff}
+.kpi.teal{background:linear-gradient(135deg,#0ea5a0 0%,#0a7a77 100%);color:#fff}
+.kpi.green{background:linear-gradient(135deg,#18b870 0%,#0e8a52 100%);color:#fff}
+.kpi.sky{background:linear-gradient(135deg,#38bdf8 0%,#0284c7 100%);color:#fff}
+.kpi-label{font-size:10px;font-weight:700;opacity:.75;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
+.kpi-value{font-size:30px;font-weight:900;line-height:1}
+.kpi-sub{font-size:11px;opacity:.7;margin-top:4px;font-weight:600}
+.kpi-icon{position:absolute;right:12px;top:12px;font-size:28px;opacity:.25}
+
+/* ── STOCK BARS ── */
+.sbar-item{margin-bottom:10px}
+.sbar-top{display:flex;justify-content:space-between;margin-bottom:4px}
+.sbar-name{font-size:13px;font-weight:600}
+.sbar-pct{font-size:12px;font-weight:700;color:var(--muted)}
+.sbar-track{height:10px;background:var(--bg);border-radius:99px;overflow:hidden;border:1px solid var(--border)}
+.sbar-fill{height:100%;border-radius:99px;transition:width .6s ease}
+.sbar-fill.ok{background:linear-gradient(90deg,var(--green),#4ade80)}
+.sbar-fill.low{background:linear-gradient(90deg,var(--accent),var(--sky))}
+.sbar-fill.crit{background:linear-gradient(90deg,var(--orange),var(--danger))}
+
+/* ── CRITICAL ALERTS ── */
+.alert-item{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:#fff5f5;border:1px solid rgba(224,80,80,0.2);border-left:4px solid var(--danger);
+  border-radius:var(--radius-sm);margin-bottom:8px;
+}
+.alert-icon{font-size:20px;flex-shrink:0}
+.alert-name{font-size:14px;font-weight:700}
+.alert-detail{font-size:12px;color:var(--muted);margin-top:1px}
+.alert-stock{font-size:15px;font-weight:800;color:var(--danger);margin-left:auto;white-space:nowrap}
+
+/* ── HISTORY ITEMS ── */
+.hist-item{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;
+}
+.hist-dot{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.hist-dot.in{background:rgba(24,184,112,0.15)}
+.hist-dot.out{background:rgba(224,80,80,0.12)}
+.hist-dot.prod{background:rgba(26,127,212,0.12)}
+.hist-body{flex:1;min-width:0}
+.hist-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.hist-badge{font-size:12px;font-weight:800;flex-shrink:0}
+.hist-badge.in{color:var(--green)}
+.hist-badge.out{color:var(--danger)}
+.hist-badge.prod{color:var(--accent)}
+
+/* ── FORMS ── */
+.form-group{margin-bottom:12px}
+.form-label{font-size:12px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px}
+.form-input,.form-select{
+  width:100%;background:#fff;border:1.5px solid var(--border);border-radius:var(--radius-sm);
+  color:var(--text);font-family:var(--font);font-size:15px;padding:12px 14px;
+  transition:border-color .15s;outline:none;-webkit-appearance:none;appearance:none;
+}
+.form-input:focus,.form-select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,127,212,0.1)}
+.form-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* ── BUTTONS ── */
+.btn{
+  padding:13px 20px;border-radius:var(--radius-sm);border:none;cursor:pointer;
+  font-family:var(--font);font-size:15px;font-weight:700;letter-spacing:0.2px;
+  transition:all .12s;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn:active{transform:scale(0.96)}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 3px 10px rgba(26,127,212,0.3)}
+.btn-primary:active{background:#1568b3}
+.btn-teal{background:var(--teal);color:#fff;box-shadow:0 3px 10px rgba(14,165,160,0.25)}
+.btn-danger{background:rgba(224,80,80,0.1);color:var(--danger);border:1.5px solid rgba(224,80,80,0.25)}
+.btn-ghost{background:transparent;color:var(--muted2);border:1.5px solid var(--border)}
+.btn-ghost:active{background:var(--surface2)}
+.btn-full{width:100%}
+.btn-sm{padding:8px 14px;font-size:13px;border-radius:8px}
+.btn-icon{width:40px;height:40px;padding:0;border-radius:10px;font-size:18px}
+
+/* ── MOVEMENT CARD ── */
+.mov-card{
+  background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);
+  padding:14px;margin-bottom:10px;position:relative;
+}
+.mov-type-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.mov-type-btn{
+  padding:10px;border-radius:var(--radius-sm);border:1.5px solid var(--border);
+  background:transparent;color:var(--muted);font-family:var(--font);font-size:14px;font-weight:700;
+  cursor:pointer;transition:all .15s;text-align:center;
+}
+.mov-type-btn:active{transform:scale(0.96)}
+.mov-type-btn.sel-in{background:rgba(24,184,112,0.12);color:var(--green);border-color:rgba(24,184,112,0.35)}
+.mov-type-btn.sel-out{background:rgba(224,80,80,0.1);color:var(--danger);border-color:rgba(224,80,80,0.3)}
+
+/* ── INGREDIENT TABLE (mobile-friendly) ── */
+.ing-row-card{
+  display:flex;align-items:center;gap:10px;padding:12px 14px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;
+}
+.ing-row-card:active{background:var(--surface2)}
+.ing-rc-name{flex:1;font-size:14px;font-weight:700}
+.ing-rc-stock{font-size:13px;font-weight:700;color:var(--accent)}
+.ing-rc-unit{font-size:11px;color:var(--muted);margin-top:1px}
+.ing-rc-status{flex-shrink:0}
+.ing-rc-price{font-size:11px;color:var(--muted);margin-top:1px}
+.badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700}
+.badge-ok{background:rgba(24,184,112,0.12);color:var(--green)}
+.badge-low{background:rgba(26,127,212,0.1);color:var(--accent)}
+.badge-crit{background:rgba(224,80,80,0.1);color:var(--danger)}
+.badge-out{background:rgba(224,80,80,0.08);color:var(--danger);border:1px solid rgba(224,80,80,0.25)}
+
+/* ── RECIPE CARDS ── */
+.recipe-tile{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  overflow:hidden;margin-bottom:10px;
+}
+.recipe-tile-head{
+  padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;
+  background:var(--surface);active:background:var(--surface2);
+}
+.recipe-tile-head:active{background:var(--surface2)}
+.recipe-tile-icon{
+  width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--navy) 0%,var(--accent) 100%);
+  display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;
+}
+.recipe-tile-name{font-size:16px;font-weight:800;flex:1}
+.recipe-tile-code{font-size:11px;color:var(--muted);margin-top:1px}
+.recipe-tile-cost{font-size:15px;font-weight:800;color:var(--accent)}
+.recipe-tile-body{display:none;padding:0 16px 14px;border-top:1px solid var(--border)}
+.recipe-tile-body.open{display:block}
+.recipe-ing-row{
+  display:flex;align-items:center;gap:8px;padding:9px 10px;
+  border-radius:8px;margin-bottom:6px;background:var(--bg);border:1px solid var(--border);
+}
+.recipe-ing-row input{
+  flex:1;background:#fff;border:1px solid var(--border);border-radius:6px;
+  color:var(--text);font-family:var(--font);font-size:14px;padding:6px 10px;outline:none;
+}
+.recipe-ing-row input:focus{border-color:var(--accent)}
+.recipe-ing-num{width:80px;text-align:right;font-size:14px;font-weight:700;color:var(--accent);
+  background:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 8px;outline:none;font-family:var(--font)}
+.recipe-ing-num:focus{border-color:var(--accent)}
+.recipe-ing-sel{width:72px;background:#fff;border:1px solid var(--border);border-radius:6px;
+  font-family:var(--font);font-size:12px;padding:6px 4px;color:var(--muted2);outline:none;-webkit-appearance:none}
+.prod-btn{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:12px;background:linear-gradient(135deg,var(--navy),var(--accent));color:#fff;
+  border:none;border-radius:var(--radius-sm);font-family:var(--font);font-size:14px;font-weight:800;
+  cursor:pointer;width:100%;margin-top:12px;
+}
+.prod-btn:active{opacity:.85}
+
+/* ── CALCULATOR ── */
+.calc-ing-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:11px 14px;border-bottom:1px solid var(--border);
+}
+.calc-ing-row:last-child{border-bottom:none}
+.calc-ing-name{font-size:14px;font-weight:600}
+.calc-ing-status{font-size:11px;margin-top:2px}
+.calc-ing-qty{font-size:15px;font-weight:800;color:var(--accent);text-align:right}
+.calc-ing-cost{font-size:11px;color:var(--muted);margin-top:1px;text-align:right}
+.evap-notice{
+  background:rgba(14,165,160,0.08);border:1px solid rgba(14,165,160,0.25);border-left:4px solid var(--teal);
+  border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:#0a7a77;margin-bottom:12px;font-weight:600;
+}
+.cost-total{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 16px;background:rgba(26,127,212,0.07);border-radius:var(--radius-sm);
+  margin-top:12px;border:1px solid rgba(26,127,212,0.15);
+}
+.cost-total-label{font-size:14px;font-weight:800}
+.cost-total-val{font-size:20px;font-weight:900;color:var(--accent)}
+
+/* ── ADD DASHED ── */
+.add-dashed{
+  border:2px dashed var(--border);border-radius:var(--radius-sm);padding:12px;
+  text-align:center;color:var(--accent);font-size:14px;font-weight:700;
+  cursor:pointer;background:rgba(26,127,212,0.03);margin-bottom:10px;
+}
+.add-dashed:active{background:rgba(26,127,212,0.08)}
+
+/* ── MODAL ── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(10,30,60,0.55);z-index:100;
+  align-items:flex-end;justify-content:center;
+}
+.modal-overlay.open{display:flex}
+.modal-sheet{
+  background:var(--surface);border-radius:24px 24px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));
+  width:100%;max-height:85vh;overflow-y:auto;animation:slideUp .25s ease;
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:99px;margin:0 auto 20px}
+.modal-title{font-size:20px;font-weight:900;margin-bottom:16px}
+
+/* ── TOAST ── */
+#toasts{position:fixed;bottom:calc(var(--bar-h) + 12px);left:16px;right:16px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast{
+  background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:14px 16px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px;
+  animation:tslide .3s ease;box-shadow:0 4px 20px rgba(15,76,138,0.15);
+}
+.toast.success{border-left:4px solid var(--green)}
+.toast.error{border-left:4px solid var(--danger)}
+.toast.info{border-left:4px solid var(--accent)}
+@keyframes tslide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+
+/* ── SEARCH ── */
+.search-bar{
+  display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px;
+}
+.search-bar input{flex:1;border:none;outline:none;font-family:var(--font);font-size:15px;background:transparent;color:var(--text)}
+.search-bar span{color:var(--muted);font-size:18px}
+
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.section-label{font-size:13px;font-weight:800;color:var(--muted2);text-transform:uppercase;letter-spacing:0.5px}
+
+.divider{border:none;border-top:1px solid var(--border);margin:12px 0}
+
+/* rotation mini chart */
+.rot-bar-wrap{display:flex;gap:6px;align-items:flex-end;height:70px}
+.rot-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.rot-bar-cnt{font-size:9px;color:var(--muted);font-weight:700}
+.rot-bar{background:linear-gradient(180deg,var(--sky),var(--accent));border-radius:4px 4px 0 0;width:100%}
+.rot-bar-lbl{font-size:8px;color:var(--muted);writing-mode:vertical-rl;transform:rotate(180deg);height:36px;overflow:hidden;font-weight:700}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- HEADER -->
+<div id="header">
+  <div>
+    <div id="header-title">🍶 Salsas</div>
+    <div id="header-sub">GESTIÓN DE INVENTARIO</div>
+  </div>
+  <div id="header-clock">
+    <div id="hclock">--:--</div>
+    <div id="hdate">---</div>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div id="content">
+
+  <!-- ▌ DASHBOARD ▌ -->
+  <div class="screen active" id="s-dashboard">
+    <div class="screen-title">Dashboard</div>
+    <div class="screen-sub">Resumen del área de salsas</div>
+
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <div class="card">
+      <div class="card-title">Nivel de Stock</div>
+      <div id="stock-bars"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⚠ Alertas de Stock Crítico</div>
+      <div id="critical-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-header">
+        <div class="card-title" style="margin-bottom:0">Rotación por Salsa</div>
+      </div>
+      <div id="rot-chart" style="padding:6px 0 4px"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Actividad Reciente</div>
+      <div id="dash-history"></div>
+    </div>
+  </div>
+
+  <!-- ▌ MOVIMIENTOS ▌ -->
+  <div class="screen" id="s-movimientos">
+    <div class="screen-title">Entradas / Salidas</div>
+    <div class="screen-sub">Registra movimientos de insumos</div>
+
+    <div id="mov-list"></div>
+    <div class="add-dashed" onclick="addMovRow()">+ Agregar otro insumo</div>
+
+    <div style="display:flex;gap:10px;margin-bottom:20px">
+      <button class="btn btn-primary btn-full" onclick="submitMov()">✓ Registrar</button>
+      <button class="btn btn-ghost" style="width:100px" onclick="clearMov()">Limpiar</button>
+    </div>
+
+    <div class="section-header">
+      <div class="section-label">Historial</div>
+    </div>
+    <div id="history-list"></div>
+  </div>
+
+  <!-- ▌ INGREDIENTES ▌ -->
+  <div class="screen" id="s-ingredientes">
+    <div class="section-header">
+      <div>
+        <div class="screen-title">Ingredientes</div>
+        <div class="screen-sub">Stock y costos</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openIngModal()">+ Nuevo</button>
+    </div>
+
+    <div class="search-bar">
+      <span>🔍</span>
+      <input type="text" id="ing-search" placeholder="Buscar insumo..." oninput="filterIngs()">
+    </div>
+    <div id="ing-list"></div>
+  </div>
+
+  <!-- ▌ RECETAS ▌ -->
+  <div class="screen" id="s-recetas">
+    <div class="screen-title">Recetas</div>
+    <div class="screen-sub">Formulaciones de salsas — toca para expandir</div>
+    <div id="recipes-list"></div>
+  </div>
+
+  <!-- ▌ CALCULADORA ▌ -->
+  <div class="screen" id="s-calculadora">
+    <div class="screen-title">Calculadora</div>
+    <div class="screen-sub">Ingredientes para producción objetivo</div>
+
+    <div class="card">
+      <div class="form-group">
+        <label class="form-label">Producto</label>
+        <select class="form-select" id="calc-sel" onchange="onCalcSelChange()">
+          <option value="">— Seleccionar salsa —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cantidad deseada</label>
+        <div style="display:flex;gap:10px">
+          <input class="form-input" type="number" id="calc-qty" value="10" min="0.1" step="0.1" style="flex:1">
+          <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:15px;font-weight:700;color:var(--muted2);white-space:nowrap;display:flex;align-items:center" id="calc-unit">L / KG</div>
+        </div>
+      </div>
+      <div id="calc-evap" class="evap-notice" style="display:none">
+        🔥 Esta salsa reduce un <b>10%</b> por evaporación — se calculará la cantidad de entrada necesaria.
+      </div>
+      <button class="btn btn-primary btn-full" style="margin-top:4px" onclick="doCalc()">Calcular ingredientes →</button>
+    </div>
+
+    <div id="calc-result"></div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- BOTTOM NAV -->
+<div id="bottom-nav">
+  <div class="nav-btn active" onclick="goTo('dashboard',this)">
+    <div class="nav-icon">📊</div>
+    <div class="nav-label">Dashboard</div>
+  </div>
+  <div class="nav-btn" onclick="goTo('movimientos',this)">
+    <div class="nav-icon">↕️</div>
+    <div class="nav-label">Movimientos</div>
+  </div>
+  <div class="nav-btn" onclick="goTo('ingredientes',this)">
+    <div class="nav-icon">🧂</div>
+    <div class="nav-label">Insumos</div>
+  </div>
+  <div class="nav-btn" onclick="goTo('recetas',this)">
+    <div class="nav-icon">📋</div>
+    <div class="nav-label">Recetas</div>
+  </div>
+  <div class="nav-btn" onclick="goTo('calculadora',this)">
+    <div class="nav-icon">🧮</div>
+    <div class="nav-label">Calcular</div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<!-- ▌ INGREDIENT MODAL (bottom sheet) ▌ -->
+<div class="modal-overlay" id="ing-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="ing-modal-title">Nuevo Insumo</div>
+    <input type="hidden" id="ing-edit-key">
+    <div class="form-row2">
+      <div class="form-group">
+        <label class="form-label">Nombre</label>
+        <input class="form-input" id="im-name" placeholder="ej: vinagre blanco">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Unidad</label>
+        <select class="form-select" id="im-unit">
+          <option>KG</option><option>L</option><option>GRS</option><option>UNIDAD</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row2">
+      <div class="form-group">
+        <label class="form-label">Stock Actual</label>
+        <input class="form-input" type="number" id="im-stock" value="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Stock Mínimo</label>
+        <input class="form-input" type="number" id="im-min" value="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Precio por Unidad (CLP)</label>
+      <input class="form-input" type="number" id="im-price" value="0">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
+      <button class="btn btn-ghost btn-full" onclick="closeIngModal()">Cancelar</button>
+      <button class="btn btn-primary btn-full" onclick="saveIng()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+// ═══════ DATA ═══════
+let DB = { ingredients:{}, recipes:{}, history:[] };
+
+const EVAP = ['2001','2002'];
+const BATCH = {
+  '2001':{size:47,unit:'L',output:42.3},'2002':{size:50,unit:'L',output:45},'2003':{size:13,unit:'L',output:13},
+  '2004':{size:5.35,unit:'KG',output:5.35},'2005':{size:4.6,unit:'KG',output:4.6},'2006':{size:2.44,unit:'KG',output:2.44},
+  '2007':{size:6.58,unit:'KG',output:6.58},'2008':{size:3.23,unit:'KG',output:3.23},'2009':{size:3.38,unit:'KG',output:3.38},'2010':{size:5.72,unit:'KG',output:5.72}
+};
+const RECIPE_ICONS = {'2001':'🍶','2002':'🍯','2003':'🐟','2004':'🥗','2005':'🌶️','2006':'🍖','2007':'🍋','2008':'🫙','2009':'🥭','2010':'🍊'};
+
+const BASE_RECIPES = [
+  {"id":"2001","nombre":"Vinagre","rendimiento":42.3,"unidadR":"L","ingredientes":[
+    {"nombre":"vinagre blanco","unidad":"L","cantidad":20,"fu":0.472813},
+    {"nombre":"azucar","unidad":"KG","cantidad":24,"fu":0.567376},
+    {"nombre":"jengibre rosado","unidad":"KG","cantidad":0.06,"fu":0.001418},
+    {"nombre":"vino blanco","unidad":"L","cantidad":3,"fu":0.070922},
+    {"nombre":"nori alga","unidad":"UNIDAD","cantidad":2,"fu":0.047281},
+    {"nombre":"cascara de limon","unidad":"GRS","cantidad":70,"fu":1.654846}]},
+  {"id":"2002","nombre":"Agridulce","rendimiento":45,"unidadR":"L","ingredientes":[
+    {"nombre":"azucar","unidad":"KG","cantidad":18,"fu":0.4},
+    {"nombre":"agua","unidad":"L","cantidad":21,"fu":0.466667},
+    {"nombre":"vino blanco","unidad":"L","cantidad":4.5,"fu":0.1},
+    {"nombre":"soya","unidad":"L","cantidad":3,"fu":0.066667},
+    {"nombre":"jengibre rosado","unidad":"KG","cantidad":0.09,"fu":0.002},
+    {"nombre":"maicena","unidad":"KG","cantidad":1,"fu":0.022222},
+    {"nombre":"cebollin","unidad":"KG","cantidad":0.3,"fu":0.006667},
+    {"nombre":"soya","unidad":"L","cantidad":1.5,"fu":0.033333},
+    {"nombre":"benzoato de sodio","unidad":"GRS","cantidad":40,"fu":0.888889},
+    {"nombre":"sorbato de potasio","unidad":"GRS","cantidad":40,"fu":0.888889}]},
+  {"id":"2003","nombre":"Anguila","rendimiento":13,"unidadR":"L","ingredientes":[
+    {"nombre":"vino blanco","unidad":"L","cantidad":4,"fu":0.307692},
+    {"nombre":"azucar","unidad":"KG","cantidad":5,"fu":0.384615},
+    {"nombre":"soya","unidad":"L","cantidad":4,"fu":0.307692},
+    {"nombre":"nori alga","unidad":"UNIDAD","cantidad":6,"fu":0.461538},
+    {"nombre":"salmon","unidad":"KG","cantidad":0.27,"fu":0.020769},
+    {"nombre":"jengibre rosado","unidad":"GRS","cantidad":50,"fu":3.846154},
+    {"nombre":"hondashi","unidad":"GRS","cantidad":4,"fu":0.307692}]},
+  {"id":"2004","nombre":"Fuji","rendimiento":5.35,"unidadR":"KG","ingredientes":[
+    {"nombre":"mayonesa kraft","unidad":"KG","cantidad":3.85,"fu":0.719626},
+    {"nombre":"mostaza","unidad":"GRS","cantidad":330,"fu":61.682243},
+    {"nombre":"miel","unidad":"GRS","cantidad":825,"fu":154.205607},
+    {"nombre":"siracha","unidad":"GRS","cantidad":110,"fu":20.560748},
+    {"nombre":"masago","unidad":"GRS","cantidad":110,"fu":20.560748},
+    {"nombre":"salsa anguila","unidad":"GRS","cantidad":110,"fu":20.560748},
+    {"nombre":"ajinomoto","unidad":"GRS","cantidad":16.5,"fu":3.084112}]},
+  {"id":"2005","nombre":"Spicy","rendimiento":4.6,"unidadR":"KG","ingredientes":[
+    {"nombre":"mayonesa kraft","unidad":"KG","cantidad":4,"fu":0.869565},
+    {"nombre":"siracha","unidad":"GRS","cantidad":400,"fu":86.956522},
+    {"nombre":"masago","unidad":"KG","cantidad":0.2,"fu":0.043478}]},
+  {"id":"2006","nombre":"Mayo BBQ","rendimiento":2.44,"unidadR":"KG","ingredientes":[
+    {"nombre":"mayonesa deli","unidad":"KG","cantidad":2,"fu":0.819672},
+    {"nombre":"bbq","unidad":"KG","cantidad":0.4,"fu":0.163934},
+    {"nombre":"vinagre blanco","unidad":"L","cantidad":0.08,"fu":0.032787},
+    {"nombre":"mostaza","unidad":"KG","cantidad":0.04,"fu":0.016393},
+    {"nombre":"ajo en polvo","unidad":"GRS","cantidad":24,"fu":9.836066},
+    {"nombre":"pimienta blanca","unidad":"GRS","cantidad":16,"fu":6.557377}]},
+  {"id":"2007","nombre":"Acevichada","rendimiento":6.58,"unidadR":"KG","ingredientes":[
+    {"nombre":"mayonesa kraft","unidad":"KG","cantidad":5.6,"fu":0.851064},
+    {"nombre":"ajo","unidad":"GRS","cantidad":160,"fu":24.316109},
+    {"nombre":"jengibre fresco","unidad":"GRS","cantidad":0.21,"fu":0.031915},
+    {"nombre":"jugo de limon","unidad":"L","cantidad":0.7,"fu":0.106383},
+    {"nombre":"azucar","unidad":"KG","cantidad":0.21,"fu":0.031915},
+    {"nombre":"sal","unidad":"KG","cantidad":0.07,"fu":0.010638},
+    {"nombre":"pimienta blanca","unidad":"GRS","cantidad":15,"fu":2.279635}]},
+  {"id":"2008","nombre":"Aji Amarillo","rendimiento":3.23,"unidadR":"KG","ingredientes":[
+    {"nombre":"mayonesa kraft","unidad":"KG","cantidad":2,"fu":0.619195},
+    {"nombre":"pasta de aji amarillo","unidad":"GRS","cantidad":800,"fu":247.678019},
+    {"nombre":"jugo de limon","unidad":"L","cantidad":0.3,"fu":0.092879},
+    {"nombre":"azucar","unidad":"KG","cantidad":0.1,"fu":0.030960},
+    {"nombre":"sal","unidad":"KG","cantidad":0.03,"fu":0.009288},
+    {"nombre":"pimienta blanca","unidad":"GRS","cantidad":10,"fu":3.095975},
+    {"nombre":"agua","unidad":"L","cantidad":0.3,"fu":0.092879}]},
+  {"id":"2009","nombre":"Chutney de Mango","rendimiento":3.38,"unidadR":"KG","ingredientes":[
+    {"nombre":"pulpa de mango","unidad":"KG","cantidad":2,"fu":0.591716},
+    {"nombre":"azucar","unidad":"KG","cantidad":0.68,"fu":0.201183},
+    {"nombre":"vinagre blanco","unidad":"L","cantidad":0.68,"fu":0.201183},
+    {"nombre":"agua","unidad":"L","cantidad":0.34,"fu":0.100592},
+    {"nombre":"jengibre fresco","unidad":"GRS","cantidad":102,"fu":30.177515},
+    {"nombre":"cebolla","unidad":"GRS","cantidad":204,"fu":60.355030},
+    {"nombre":"pimienta blanca","unidad":"GRS","cantidad":6.8,"fu":2.011834},
+    {"nombre":"sal","unidad":"KG","cantidad":0.0204,"fu":0.006036},
+    {"nombre":"aceite","unidad":"L","cantidad":0.015,"fu":0.004438}]},
+  {"id":"2010","nombre":"Maracuya","rendimiento":5.72,"unidadR":"KG","ingredientes":[
+    {"nombre":"pulpa de maracuya","unidad":"KG","cantidad":2,"fu":0.349650},
+    {"nombre":"azucar","unidad":"KG","cantidad":1.33,"fu":0.232517},
+    {"nombre":"mayonesa kraft","unidad":"KG","cantidad":2.25,"fu":0.393357},
+    {"nombre":"mostaza","unidad":"KG","cantidad":0.135,"fu":0.023601}]}
+];
+
+const BASE_INGS = [
+  {nombre:"vinagre blanco",unidad:"L",stock:25,minStock:5,precio:3008.4},
+  {nombre:"azucar",unidad:"KG",stock:40,minStock:10,precio:838.65},
+  {nombre:"jengibre rosado",unidad:"KG",stock:2,minStock:0.5,precio:3782},
+  {nombre:"vino blanco",unidad:"L",stock:8,minStock:2,precio:2500},
+  {nombre:"nori alga",unidad:"UNIDAD",stock:15,minStock:5,precio:800},
+  {nombre:"cascara de limon",unidad:"GRS",stock:300,minStock:100,precio:5},
+  {nombre:"agua",unidad:"L",stock:999,minStock:50,precio:0},
+  {nombre:"soya",unidad:"L",stock:6,minStock:2,precio:2200},
+  {nombre:"maicena",unidad:"KG",stock:3,minStock:1,precio:1344},
+  {nombre:"cebollin",unidad:"KG",stock:1,minStock:0.3,precio:1800},
+  {nombre:"benzoato de sodio",unidad:"GRS",stock:200,minStock:50,precio:15},
+  {nombre:"sorbato de potasio",unidad:"GRS",stock:180,minStock:50,precio:18},
+  {nombre:"salmon",unidad:"KG",stock:1,minStock:0.3,precio:18000},
+  {nombre:"hondashi",unidad:"GRS",stock:50,minStock:20,precio:30},
+  {nombre:"mayonesa kraft",unidad:"KG",stock:12,minStock:3,precio:3200},
+  {nombre:"mostaza",unidad:"KG",stock:3,minStock:0.5,precio:1680},
+  {nombre:"miel",unidad:"KG",stock:2,minStock:0.5,precio:4622},
+  {nombre:"siracha",unidad:"L",stock:1.5,minStock:0.5,precio:5394},
+  {nombre:"masago",unidad:"KG",stock:0.5,minStock:0.2,precio:31800},
+  {nombre:"salsa anguila",unidad:"GRS",stock:500,minStock:100,precio:12},
+  {nombre:"ajinomoto",unidad:"GRS",stock:100,minStock:30,precio:4.6},
+  {nombre:"mayonesa deli",unidad:"KG",stock:4,minStock:1,precio:2800},
+  {nombre:"bbq",unidad:"KG",stock:2,minStock:0.5,precio:2915},
+  {nombre:"ajo en polvo",unidad:"GRS",stock:200,minStock:50,precio:25.1},
+  {nombre:"pimienta blanca",unidad:"GRS",stock:150,minStock:50,precio:20},
+  {nombre:"ajo",unidad:"GRS",stock:300,minStock:100,precio:9.99},
+  {nombre:"jengibre fresco",unidad:"GRS",stock:100,minStock:50,precio:11},
+  {nombre:"jugo de limon",unidad:"L",stock:1,minStock:0.3,precio:4990},
+  {nombre:"sal",unidad:"KG",stock:2,minStock:0.5,precio:362},
+  {nombre:"pasta de aji amarillo",unidad:"GRS",stock:800,minStock:200,precio:15},
+  {nombre:"pulpa de mango",unidad:"KG",stock:4,minStock:1,precio:3949},
+  {nombre:"cebolla",unidad:"GRS",stock:500,minStock:100,precio:2},
+  {nombre:"aceite",unidad:"L",stock:2,minStock:0.5,precio:1500},
+  {nombre:"pulpa de maracuya",unidad:"KG",stock:3,minStock:1,precio:7046},
+];
+
+function initDB() {
+  const s = localStorage.getItem('salsas_tablet_db');
+  if (s) { DB = JSON.parse(s); return; }
+  BASE_INGS.forEach(i => { DB.ingredients[i.nombre.toLowerCase().trim()] = {...i}; });
+  BASE_RECIPES.forEach(r => { DB.recipes[r.id] = JSON.parse(JSON.stringify(r)); });
+  saveDB();
+}
+function saveDB() { localStorage.setItem('salsas_tablet_db', JSON.stringify(DB)); }
+
+// ═══════ CLOCK ═══════
+function tickClock() {
+  const n = new Date();
+  document.getElementById('hclock').textContent = n.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('hdate').textContent = n.toLocaleDateString('es-CL',{weekday:'short',day:'2-digit',month:'short'});
+}
+setInterval(tickClock,1000); tickClock();
+
+// ═══════ NAV ═══════
+let currentScreen = 'dashboard';
+function goTo(name, el) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('s-'+name).classList.add('active');
+  el.classList.add('active');
+  currentScreen = name;
+  renderScreen(name);
+  // scroll to top
+  document.getElementById('s-'+name).scrollTop = 0;
+}
+function renderScreen(n) {
+  if(n==='dashboard') renderDash();
+  if(n==='movimientos') renderMov();
+  if(n==='ingredientes') renderIngs();
+  if(n==='recetas') renderRecipes();
+  if(n==='calculadora') renderCalc();
+}
+
+// ═══════ UTILS ═══════
+const cap = s => s ? s.charAt(0).toUpperCase()+s.slice(1) : '';
+const r2 = n => Math.round(n*100)/100;
+const r3 = n => Math.round(n*1000)/1000;
+const fmtD = iso => { const d=new Date(iso); return d.toLocaleDateString('es-CL',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}); };
+function toast(msg,type='success') {
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<span>${{success:'✓',error:'✕',info:'ℹ'}[type]||'·'}</span><span>${msg}</span>`;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(()=>t.remove(),3200);
+}
+function ingStatus(i) {
+  if(i.stock<=0) return {label:'Sin stock',cls:'badge-out'};
+  if(i.stock<=i.minStock) return {label:'Crítico',cls:'badge-crit'};
+  if(i.stock<=i.minStock*2) return {label:'Bajo',cls:'badge-low'};
+  return {label:'OK',cls:'badge-ok'};
+}
+
+// ═══════ DASHBOARD ═══════
+function renderDash() {
+  const ings = Object.values(DB.ingredients);
+  const crit = ings.filter(i=>i.stock<=i.minStock);
+  const val = ings.reduce((s,i)=>s+(i.stock*i.precio),0);
+  const today = DB.history.filter(h=>new Date(h.date).toDateString()===new Date().toDateString()).length;
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi blue"><div class="kpi-icon">🧂</div><div class="kpi-label">Total Insumos</div><div class="kpi-value">${ings.length}</div><div class="kpi-sub">ingredientes</div></div>
+    <div class="kpi ${crit.length>0?'sky':'teal'}"><div class="kpi-icon">⚠️</div><div class="kpi-label">Stock Crítico</div><div class="kpi-value">${crit.length}</div><div class="kpi-sub">${crit.length>0?'por reponer':'todo OK'}</div></div>
+    <div class="kpi green"><div class="kpi-icon">💰</div><div class="kpi-label">Valor Stock</div><div class="kpi-value">$${(val/1000).toFixed(0)}K</div><div class="kpi-sub">CLP en stock</div></div>
+    <div class="kpi sky"><div class="kpi-icon">📋</div><div class="kpi-label">Mov. Hoy</div><div class="kpi-value">${today}</div><div class="kpi-sub">registros</div></div>
+  `;
+
+  // stock bars top 10
+  document.getElementById('stock-bars').innerHTML = ings.slice(0,10).map(i=>{
+    const pct = i.minStock>0 ? Math.min(100,Math.round((i.stock/(i.minStock*5))*100)) : 50;
+    const cls = pct<20?'crit':pct<50?'low':'ok';
+    return `<div class="sbar-item">
+      <div class="sbar-top"><span class="sbar-name">${cap(i.nombre)}</span><span class="sbar-pct">${pct}%</span></div>
+      <div class="sbar-track"><div class="sbar-fill ${cls}" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+
+  // critical
+  document.getElementById('critical-list').innerHTML = crit.length===0
+    ? '<div style="color:var(--green);font-size:14px;font-weight:700;padding:8px 0">✓ Todos los insumos tienen stock suficiente</div>'
+    : crit.map(i=>`<div class="alert-item">
+        <div class="alert-icon">⚠️</div>
+        <div><div class="alert-name">${cap(i.nombre)}</div><div class="alert-detail">Mínimo: ${i.minStock} ${i.unidad}</div></div>
+        <div class="alert-stock">${i.stock} ${i.unidad}</div>
+      </div>`).join('');
+
+  // rotation
+  const recipes = Object.values(DB.recipes);
+  const maxC = Math.max(...recipes.map(r=>DB.history.filter(h=>h.note&&h.note.includes(r.nombre)).length),1);
+  document.getElementById('rot-chart').innerHTML = `<div class="rot-bar-wrap">
+    ${recipes.map(r=>{
+      const c=DB.history.filter(h=>h.note&&h.note.includes(r.nombre)).length;
+      const h=Math.max(6,Math.round((c/maxC)*60));
+      return `<div class="rot-bar-col"><div class="rot-bar-cnt">${c}</div><div class="rot-bar" style="height:${h}px"></div><div class="rot-bar-lbl">${r.nombre.slice(0,7)}</div></div>`;
+    }).join('')}
+  </div><div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center;font-weight:600">Producciones por receta</div>`;
+
+  // recent
+  const recent = [...DB.history].reverse().slice(0,6);
+  document.getElementById('dash-history').innerHTML = recent.length===0
+    ? '<div style="color:var(--muted);font-size:14px;text-align:center;padding:12px">Sin movimientos aún</div>'
+    : recent.map(h=>histRow(h)).join('');
+}
+
+function histRow(h) {
+  const ic={entrada:'⬆️',salida:'⬇️',produccion:'⚙️'};
+  const cl={entrada:'in',salida:'out',produccion:'prod'};
+  const lb={entrada:'Entrada',salida:'Salida',produccion:'Producción'};
+  const c=cl[h.type]||'in';
+  const txt=h.items.slice(0,2).map(i=>`${cap(i.nombre)} (${i.qty} ${i.unidad})`).join(', ')+(h.items.length>2?` +${h.items.length-2} más`:'');
+  return `<div class="hist-item">
+    <div class="hist-dot ${c}">${ic[h.type]||'·'}</div>
+    <div class="hist-body"><div class="hist-name">${txt}</div><div class="hist-meta">${lb[h.type]||h.type} · ${fmtD(h.date)}${h.note?' · '+h.note:''}</div></div>
+    <div class="hist-badge ${c}">${h.type==='entrada'?'+':h.type==='salida'?'−':'●'}${h.items.length}</div>
+  </div>`;
+}
+
+// ═══════ MOVIMIENTOS ═══════
+let movRows = [];
+function renderMov() {
+  if(!movRows.length) addMovRow();
+  else drawMovRows();
+  drawHistory();
+}
+function addMovRow() {
+  movRows.push({type:'entrada',ingredient:'',qty:'',note:''});
+  drawMovRows();
+}
+function drawMovRows() {
+  document.getElementById('mov-list').innerHTML = movRows.map((r,i)=>`
+    <div class="mov-card">
+      ${movRows.length>1?`<button class="btn btn-danger btn-icon" style="position:absolute;top:10px;right:10px" onclick="delMovRow(${i})">✕</button>`:''}
+      <div class="mov-type-row">
+        <button class="mov-type-btn ${r.type==='entrada'?'sel-in':''}" onclick="setMovType(${i},'entrada')">⬆ Entrada</button>
+        <button class="mov-type-btn ${r.type==='salida'?'sel-out':''}" onclick="setMovType(${i},'salida')">⬇ Salida</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Insumo</label>
+        <select class="form-select" onchange="movRows[${i}].ingredient=this.value">
+          <option value="">— Seleccionar —</option>
+          ${Object.keys(DB.ingredients).sort().map(k=>`<option value="${k}" ${r.ingredient===k?'selected':''}>${cap(k)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-row2">
+        <div class="form-group"><label class="form-label">Cantidad</label><input class="form-input" type="number" min="0" step="0.01" value="${r.qty}" placeholder="0" onchange="movRows[${i}].qty=this.value"></div>
+        <div class="form-group"><label class="form-label">Nota</label><input class="form-input" type="text" value="${r.note}" placeholder="opcional" onchange="movRows[${i}].note=this.value"></div>
+      </div>
+    </div>`).join('');
+}
+function setMovType(i,t){movRows[i].type=t;drawMovRows()}
+function delMovRow(i){movRows.splice(i,1);drawMovRows()}
+function clearMov(){movRows=[];addMovRow()}
+function submitMov() {
+  const valid = movRows.filter(r=>r.ingredient&&r.qty&&parseFloat(r.qty)>0);
+  if(!valid.length){toast('Completa al menos un insumo','error');return;}
+  let ok=true;
+  valid.forEach(r=>{
+    const ing=DB.ingredients[r.ingredient];if(!ing)return;
+    const q=parseFloat(r.qty);
+    if(r.type==='salida'&&ing.stock<q){toast(`Stock insuficiente: ${r.ingredient}`,'error');ok=false;}
+  });
+  if(!ok)return;
+  valid.forEach(r=>{
+    const ing=DB.ingredients[r.ingredient];if(!ing)return;
+    const q=parseFloat(r.qty);
+    if(r.type==='entrada') ing.stock=r2(ing.stock+q);
+    else ing.stock=r2(ing.stock-q);
+  });
+  DB.history.push({id:Date.now(),type:valid[0].type,items:valid.map(r=>({nombre:r.ingredient,qty:parseFloat(r.qty),unidad:DB.ingredients[r.ingredient]?.unidad||''})),date:new Date().toISOString(),note:valid.map(r=>r.note).filter(Boolean).join(', ')});
+  saveDB();clearMov();drawHistory();
+  toast(`${valid.length} movimiento(s) registrado(s)`,'success');
+}
+function drawHistory() {
+  const r=[...DB.history].reverse().slice(0,30);
+  document.getElementById('history-list').innerHTML = r.length===0
+    ? '<div style="color:var(--muted);text-align:center;padding:16px;font-size:14px">Sin historial</div>'
+    : r.map(h=>histRow(h)).join('');
+}
+
+// ═══════ INGREDIENTES ═══════
+function renderIngs() { drawIngList(Object.values(DB.ingredients)); }
+function filterIngs() {
+  const q=document.getElementById('ing-search').value.toLowerCase();
+  drawIngList(Object.values(DB.ingredients).filter(i=>i.nombre.includes(q)));
+}
+function drawIngList(ings) {
+  document.getElementById('ing-list').innerHTML = ings.map(i=>{
+    const st=ingStatus(i);
+    return `<div class="ing-row-card" onclick="editIng('${i.nombre.toLowerCase().trim()}')">
+      <div style="flex:1">
+        <div class="ing-rc-name">${cap(i.nombre)}</div>
+        <div class="ing-rc-price">$${i.precio.toLocaleString('es-CL',{maximumFractionDigits:0})} / ${i.unidad} · Mín ${i.minStock} ${i.unidad}</div>
+      </div>
+      <div style="text-align:right;margin-right:8px">
+        <div class="ing-rc-stock">${i.stock} ${i.unidad}</div>
+        <div class="ing-rc-unit">en stock</div>
+      </div>
+      <span class="badge ${st.cls}">${st.label}</span>
+    </div>`;
+  }).join('');
+}
+
+function openIngModal() {
+  document.getElementById('ing-edit-key').value='';
+  document.getElementById('ing-modal-title').textContent='Nuevo Insumo';
+  ['im-name','im-stock','im-min','im-price'].forEach(id=>document.getElementById(id).value=id==='im-name'?'':'0');
+  document.getElementById('im-unit').value='KG';
+  document.getElementById('ing-modal').classList.add('open');
+}
+function editIng(key) {
+  const i=DB.ingredients[key];
+  document.getElementById('ing-edit-key').value=key;
+  document.getElementById('ing-modal-title').textContent='Editar Insumo';
+  document.getElementById('im-name').value=i.nombre;
+  document.getElementById('im-unit').value=i.unidad;
+  document.getElementById('im-stock').value=i.stock;
+  document.getElementById('im-min').value=i.minStock;
+  document.getElementById('im-price').value=i.precio;
+  document.getElementById('ing-modal').classList.add('open');
+}
+function closeIngModal(){document.getElementById('ing-modal').classList.remove('open')}
+function saveIng() {
+  const key=document.getElementById('ing-edit-key').value;
+  const name=document.getElementById('im-name').value.trim().toLowerCase();
+  if(!name){toast('Nombre requerido','error');return;}
+  const obj={nombre:name,unidad:document.getElementById('im-unit').value,
+    stock:parseFloat(document.getElementById('im-stock').value)||0,
+    minStock:parseFloat(document.getElementById('im-min').value)||0,
+    precio:parseFloat(document.getElementById('im-price').value)||0};
+  if(key&&key!==name)delete DB.ingredients[key];
+  DB.ingredients[name]=obj;
+  saveDB();closeIngModal();renderIngs();toast('Insumo guardado','success');
+}
+
+// ═══════ RECETAS ═══════
+let openRecipes = new Set();
+let recipeView = {}; // 'lote' | 'unitario' per recipe id
+
+function renderRecipes() {
+  document.getElementById('recipes-list').innerHTML = Object.values(DB.recipes).map(r=>{
+    const b=BATCH[r.id]; const ev=EVAP.includes(r.id);
+    const cost=recipeCost(r);
+    const costUnit = b ? (cost/b.output) : 0;
+    const icon=RECIPE_ICONS[r.id]||'🍶';
+    const isOpen=openRecipes.has(r.id);
+    const view = recipeView[r.id] || 'lote';
+    return `<div class="recipe-tile">
+      <div class="recipe-tile-head" onclick="toggleRec('${r.id}')">
+        <div class="recipe-tile-icon">${icon}</div>
+        <div style="flex:1">
+          <div class="recipe-tile-name">${r.nombre}${ev?' 🔥':''}</div>
+          <div class="recipe-tile-code">Cód ${r.id} · ${r.ingredientes.length} ingredientes · Rinde ${b?b.output+' '+b.unit:'?'}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="recipe-tile-cost">$${(cost/1000).toFixed(1)}K <span style="font-size:11px;color:rgba(26,127,212,0.7)">lote</span></div>
+          <div style="font-size:12px;color:var(--teal);font-weight:700">$${costUnit.toLocaleString('es-CL',{maximumFractionDigits:0})} / ${b?b.unit:'u'}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${isOpen?'▲ cerrar':'▼ ver'}</div>
+        </div>
+      </div>
+      <div class="recipe-tile-body ${isOpen?'open':''}" id="rb-${r.id}">
+        <!-- VIEW TOGGLE -->
+        <div style="display:flex;gap:8px;margin:12px 0 10px;background:var(--bg);border-radius:10px;padding:4px">
+          <button onclick="setRecView('${r.id}','lote')" style="flex:1;padding:8px;border-radius:7px;border:none;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:${view==='lote'?'var(--accent)':'transparent'};color:${view==='lote'?'#fff':'var(--muted)'}">
+            📦 Por Lote
+          </button>
+          <button onclick="setRecView('${r.id}','unitario')" style="flex:1;padding:8px;border-radius:7px;border:none;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:${view==='unitario'?'var(--teal)':'transparent'};color:${view==='unitario'?'#fff':'var(--muted)'}">
+            🎯 Factor Unitario
+          </button>
+        </div>
+        ${view==='unitario' ? renderUnitView(r,b) : ''}
+        <div style="margin-top:${view==='unitario'?'0':'0'}" id="ril-${r.id}">${view==='lote'?renderRecipeIngs(r):''}</div>
+        ${view==='lote'?`
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+          <button class="btn btn-ghost btn-sm btn-full" onclick="addRecipeIng('${r.id}')">+ Ingrediente</button>
+          <button class="btn btn-primary btn-sm btn-full" onclick="saveRec('${r.id}')">💾 Guardar</button>
+        </div>`:''}
+        <button class="prod-btn" onclick="doProduccion('${r.id}')">▶ Registrar Producción — Descontar Stock</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderUnitView(r, b) {
+  if (!b) return '';
+  const unit = b.unit;
+  const evap = EVAP.includes(r.id);
+  return `
+    <div style="background:rgba(14,165,160,0.06);border:1px solid rgba(14,165,160,0.2);border-radius:10px;padding:12px;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:800;color:var(--teal);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">
+        Factor Unitario · Por cada 1 ${unit} de producto final${evap?' (tras evaporación)':''}
+      </div>
+      ${r.ingredientes.map(ing => {
+        const fu = ing.fu || (ing.cantidad / b.output);
+        const fuFmt = fu < 0.01 ? fu.toFixed(5) : fu < 1 ? fu.toFixed(4) : fu.toFixed(3);
+        const k = ing.nombre.toLowerCase().trim();
+        const precio = DB.ingredients[k]?.precio || 0;
+        const u = (ing.unidad||'').toUpperCase();
+        const fuKg = u==='GRS' ? fu/1000 : fu;
+        const costUnit = fuKg * precio;
+        return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border-radius:8px;margin-bottom:6px;border:1px solid var(--border)">
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700">${cap(ing.nombre)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px">Lote: ${ing.cantidad} ${ing.unidad}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:15px;font-weight:800;color:var(--teal)">${fuFmt} <span style="font-size:11px;font-weight:600">${ing.unidad}/${unit}</span></div>
+            ${costUnit>0?`<div style="font-size:11px;color:var(--muted)">$${costUnit.toFixed(0)}/${unit}</div>`:''}
+          </div>
+        </div>`;
+      }).join('')}
+      <div style="display:flex;justify-content:space-between;padding:10px 12px;background:rgba(14,165,160,0.1);border-radius:8px;margin-top:4px;border:1px solid rgba(14,165,160,0.2)">
+        <div style="font-size:13px;font-weight:800;color:var(--teal)">Costo por ${unit}</div>
+        <div style="font-size:16px;font-weight:900;color:var(--teal)">$${(recipeCost(r)/b.output).toLocaleString('es-CL',{maximumFractionDigits:0})}</div>
+      </div>
+    </div>`;
+}
+
+function setRecView(id, view) {
+  recipeView[id] = view;
+  renderRecipes();
+}
+function renderRecipeIngs(r) {
+  return r.ingredientes.map((ing,idx)=>`
+    <div class="recipe-ing-row">
+      <input value="${cap(ing.nombre)}" onchange="DB.recipes['${r.id}'].ingredientes[${idx}].nombre=this.value.toLowerCase().trim()" placeholder="Ingrediente" style="flex:1">
+      <input class="recipe-ing-num" type="number" value="${ing.cantidad}" onchange="DB.recipes['${r.id}'].ingredientes[${idx}].cantidad=parseFloat(this.value)||0">
+      <select class="recipe-ing-sel" onchange="DB.recipes['${r.id}'].ingredientes[${idx}].unidad=this.value">
+        ${['KG','L','GRS','UNIDAD'].map(u=>`<option ${ing.unidad===u?'selected':''}>${u}</option>`).join('')}
+      </select>
+      <button class="btn btn-danger btn-icon" onclick="delRecipeIng('${r.id}',${idx})">✕</button>
+    </div>`).join('');
+}
+function toggleRec(id) {
+  if(openRecipes.has(id))openRecipes.delete(id); else openRecipes.add(id);
+  renderRecipes();
+}
+function saveRec(id){saveDB();toast('Receta guardada','success')}
+function addRecipeIng(id){DB.recipes[id].ingredientes.push({nombre:'nuevo',unidad:'KG',cantidad:0});document.getElementById('ril-'+id).innerHTML=renderRecipeIngs(DB.recipes[id])}
+function delRecipeIng(id,idx){DB.recipes[id].ingredientes.splice(idx,1);document.getElementById('ril-'+id).innerHTML=renderRecipeIngs(DB.recipes[id])}
+function recipeCost(r){
+  return r.ingredientes.reduce((s,ing)=>{
+    const k=ing.nombre.toLowerCase().trim();const p=DB.ingredients[k]?.precio||0;
+    const u=(ing.unidad||'').toUpperCase();let q=ing.cantidad;
+    if(u==='GRS')q/=1000;return s+q*p;
+  },0);
+}
+function doProduccion(id) {
+  const r=DB.recipes[id]; let ok=true;
+  r.ingredientes.forEach(ing=>{
+    const k=ing.nombre.toLowerCase().trim();const idb=DB.ingredients[k];if(!idb)return;
+    const u=(ing.unidad||'').toUpperCase();let q=ing.cantidad;
+    if(u==='GRS'&&idb.unidad==='KG')q/=1000;
+    if(idb.stock<q){toast(`Falta: ${k} (necesita ${q}, hay ${idb.stock})`,'error');ok=false;}
+  });
+  if(!ok)return;
+  r.ingredientes.forEach(ing=>{
+    const k=ing.nombre.toLowerCase().trim();const idb=DB.ingredients[k];if(!idb)return;
+    const u=(ing.unidad||'').toUpperCase();let q=ing.cantidad;
+    if(u==='GRS'&&idb.unidad==='KG')q/=1000;
+    idb.stock=r2(idb.stock-q);
+  });
+  DB.history.push({id:Date.now(),type:'produccion',items:r.ingredientes.map(i=>({nombre:i.nombre,qty:i.cantidad,unidad:i.unidad})),date:new Date().toISOString(),note:r.nombre});
+  saveDB();toast(`Producción de ${r.nombre} registrada ✓`,'success');
+}
+
+// ═══════ CALCULADORA ═══════
+function renderCalc() {
+  const sel=document.getElementById('calc-sel');
+  sel.innerHTML='<option value="">— Seleccionar salsa —</option>'+Object.values(DB.recipes).map(r=>`<option value="${r.id}">${RECIPE_ICONS[r.id]||'🍶'} ${r.nombre}</option>`).join('');
+}
+function onCalcSelChange() {
+  const id=document.getElementById('calc-sel').value;
+  const b=BATCH[id];const ev=EVAP.includes(id);
+  document.getElementById('calc-unit').textContent=b?b.unit:'L/KG';
+  document.getElementById('calc-evap').style.display=ev?'block':'none';
+}
+function doCalc() {
+  const id=document.getElementById('calc-sel').value;
+  const qty=parseFloat(document.getElementById('calc-qty').value)||0;
+  if(!id||qty<=0){toast('Selecciona producto y cantidad','error');return;}
+  const r=DB.recipes[id];const b=BATCH[id];if(!b){toast('Sin datos de lote','error');return;}
+  const ev=EVAP.includes(id);
+  // Factor unitario: qty es el OUTPUT deseado
+  // Para evap: necesitamos más INPUT = qty / 0.9
+  const inputNecesario = ev ? qty/0.9 : qty;
+  let totalCost=0;
+
+  const rows=r.ingredientes.map(ing=>{
+    // Usar factor unitario si existe, si no calcularlo desde el lote
+    const fu = ing.fu || (ing.cantidad / b.output);
+    const needed = r3(fu * qty);
+    const u=(ing.unidad||'').toUpperCase();
+    const k=ing.nombre.toLowerCase().trim();
+    const idb=DB.ingredients[k];
+    let needKg = u==='GRS' ? needed/1000 : needed;
+    const cost=idb ? needKg*idb.precio : 0;
+    totalCost+=cost;
+    let stockOk=true;
+    if(idb){const sk=(idb.unidad==='KG'||idb.unidad==='L')?idb.stock:idb.stock/1000;stockOk=sk>=needKg;}
+    return `<div class="calc-ing-row">
+      <div>
+        <div class="calc-ing-name">${cap(ing.nombre)}</div>
+        <div style="font-size:10px;color:var(--teal);font-weight:700;margin-top:1px">FU: ${fu<0.01?fu.toFixed(5):fu<1?fu.toFixed(4):fu.toFixed(3)} ${ing.unidad}/${b.unit}</div>
+        ${idb?`<div class="calc-ing-status" style="color:${stockOk?'var(--green)':'var(--danger)'}">${stockOk?'✓ hay stock':'⚠ falta stock'} (${idb.stock} ${idb.unidad})</div>`:''}
+      </div>
+      <div>
+        <div class="calc-ing-qty">${needed.toLocaleString('es-CL',{maximumFractionDigits:3})} ${ing.unidad}</div>
+        ${cost>0?`<div class="calc-ing-cost">$${cost.toLocaleString('es-CL',{maximumFractionDigits:0})}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('calc-result').innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:18px;font-weight:900">${RECIPE_ICONS[id]||'🍶'} ${r.nombre}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">Producción objetivo: <b>${qty} ${b.unit}</b>${ev?` · Entrada necesaria: <b>${inputNecesario.toFixed(2)} ${b.unit}</b>`:''}</div>
+        </div>
+        <div style="text-align:right;background:rgba(14,165,160,0.08);padding:10px 14px;border-radius:10px;border:1px solid rgba(14,165,160,0.2)">
+          <div style="font-size:10px;color:var(--teal);font-weight:700">Cantidad</div>
+          <div style="font-size:22px;font-weight:900;color:var(--teal)">${qty} ${b.unit}</div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:800;color:var(--teal);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">🎯 Ingredientes (calculados por Factor Unitario)</div>
+      ${rows}
+      <div class="cost-total">
+        <div class="cost-total-label">Costo Total Estimado</div>
+        <div class="cost-total-val">$${totalCost.toLocaleString('es-CL',{maximumFractionDigits:0})}</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 14px;background:rgba(26,127,212,0.05);border-radius:8px;margin-top:8px;border:1px solid rgba(26,127,212,0.1)">
+        <div style="font-size:12px;color:var(--muted);font-weight:700">Costo por ${b.unit}</div>
+        <div style="font-size:14px;font-weight:800;color:var(--accent)">$${(totalCost/qty).toLocaleString('es-CL',{maximumFractionDigits:0})} / ${b.unit}</div>
+      </div>
+      ${ev?`<div class="evap-notice" style="margin-top:10px">🔥 Para obtener <b>${qty} ${b.unit}</b> de producto final debes preparar <b>${inputNecesario.toFixed(2)} ${b.unit}</b> antes de cocción (pierde 10% por evaporación).</div>`:''}
+    </div>`;
+}
+
+// close modal on overlay click
+document.getElementById('ing-modal').addEventListener('click',function(e){if(e.target===this)closeIngModal()});
+
+// ═══════ INIT ═══════
+initDB();
+renderDash();
+</script>
+</body>
+</html>
