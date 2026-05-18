@@ -432,21 +432,25 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 
     <div class="kpi-grid" id="kpi-grid"></div>
 
+    <!-- Productos terminados en stock -->
     <div class="card">
-      <div class="card-title">Nivel de Stock</div>
+      <div class="card-title">🍶 Stock de Productos Terminados</div>
+      <div id="dash-terminados"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Nivel de Stock — Insumos</div>
       <div id="stock-bars"></div>
     </div>
 
     <div class="card">
-      <div class="card-title">⚠ Alertas de Stock Crítico</div>
+      <div class="card-title">⚠ Alertas de Insumos Críticos</div>
       <div id="critical-list"></div>
     </div>
 
     <div class="card">
-      <div class="section-header">
-        <div class="card-title" style="margin-bottom:0">Rotación por Salsa</div>
-      </div>
-      <div id="rot-chart" style="padding:6px 0 4px"></div>
+      <div class="card-title">🛒 Salidas del Día</div>
+      <div id="dash-ventas-hoy"></div>
     </div>
 
     <div class="card">
@@ -454,9 +458,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
       <div id="dash-history"></div>
     </div>
 
-    <div class="card">
-      <div class="card-title">🛒 Salidas del Día</div>
-      <div id="dash-ventas-hoy"></div>
+    <!-- Valor inventario discreto al fondo -->
+    <div style="text-align:center;padding:10px;font-size:11px;color:var(--muted)">
+      Valor total en insumos: <span id="dash-valor-total" style="font-weight:700"></span>
     </div>
   </div>
 
@@ -614,9 +618,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
         </div>
       </div>
 
-      <!-- Preview descuento ingredientes -->
-      <div id="prod-descuento-preview" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px">
-        <div class="card-title">🧮 Ingredientes que se descontarán</div>
+      <!-- Preview stock producto terminado -->
+      <div id="prod-descuento-preview" style="display:none;background:rgba(26,127,212,0.05);border:1px solid rgba(26,127,212,0.15);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:12px">
         <div id="prod-ing-preview"></div>
       </div>
 
@@ -632,21 +635,37 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
     <div id="history-list"></div>
   </div>
 
-  <!-- ▌ INGREDIENTES ▌ -->
+  <!-- ▌ STOCK ▌ -->
   <div class="screen" id="s-ingredientes">
     <div class="section-header">
       <div>
-        <div class="screen-title">Ingredientes</div>
-        <div class="screen-sub">Stock y costos</div>
+        <div class="screen-title">Stock</div>
+        <div class="screen-sub">Insumos y productos terminados</div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="openIngModal()">+ Nuevo</button>
+      <button class="btn btn-primary btn-sm" onclick="openIngModal()">+ Insumo</button>
     </div>
 
-    <div class="search-bar">
-      <span>🔍</span>
-      <input type="text" id="ing-search" placeholder="Buscar insumo..." oninput="filterIngs()">
+    <!-- Sub-tabs -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+      <button id="stab-insumos" class="mov-main-tab active-tab" onclick="setStockTab('insumos')">🧂 Insumos</button>
+      <button id="stab-terminados" class="mov-main-tab" onclick="setStockTab('terminados')">🍶 Prod. Terminados</button>
     </div>
-    <div id="ing-list"></div>
+
+    <!-- Panel insumos -->
+    <div id="spanel-insumos">
+      <div class="search-bar">
+        <span>🔍</span>
+        <input type="text" id="ing-search" placeholder="Buscar insumo..." oninput="filterIngs()">
+      </div>
+      <div id="ing-list"></div>
+    </div>
+
+    <!-- Panel productos terminados -->
+    <div id="spanel-terminados" style="display:none">
+      <div id="terminados-list"></div>
+      <!-- valor total discreto al fondo -->
+      <div id="terminados-valor" style="margin-top:8px;text-align:right;font-size:11px;color:var(--muted);padding:6px 10px;border-top:1px solid var(--border)"></div>
+    </div>
   </div>
 
   <!-- ▌ RECETAS ▌ -->
@@ -697,8 +716,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
     <div class="nav-label">Movimientos</div>
   </div>
   <div class="nav-btn" onclick="goTo('ingredientes',this)">
-    <div class="nav-icon">🧂</div>
-    <div class="nav-label">Insumos</div>
+    <div class="nav-icon">📦</div>
+    <div class="nav-label">Stock</div>
   </div>
   <div class="nav-btn" onclick="goTo('recetas',this)">
     <div class="nav-icon">📋</div>
@@ -755,7 +774,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 
 <script>
 // ═══════ DATA ═══════
-let DB = { ingredients:{}, recipes:{}, history:[] };
+let DB = { ingredients:{}, recipes:{}, history:[], finishedGoods:{} };
 
 const EVAP = ['2001','2002'];
 const BATCH = {
@@ -883,9 +902,24 @@ const BASE_INGS = [
 
 function initDB() {
   const s = localStorage.getItem('salsas_tablet_db');
-  if (s) { DB = JSON.parse(s); return; }
+  if (s) {
+    DB = JSON.parse(s);
+    // Migración: agregar finishedGoods si no existe
+    if (!DB.finishedGoods) {
+      DB.finishedGoods = {};
+      BASE_RECIPES.forEach(r => {
+        DB.finishedGoods[r.id] = { id:r.id, nombre:r.nombre, stock:0, unit:BATCH[r.id]?.unit||'KG' };
+      });
+      saveDB();
+    }
+    return;
+  }
   BASE_INGS.forEach(i => { DB.ingredients[i.nombre.toLowerCase().trim()] = {...i}; });
   BASE_RECIPES.forEach(r => { DB.recipes[r.id] = JSON.parse(JSON.stringify(r)); });
+  // Inicializar stock de productos terminados en 0
+  BASE_RECIPES.forEach(r => {
+    DB.finishedGoods[r.id] = { id:r.id, nombre:r.nombre, stock:0, unit:BATCH[r.id]?.unit||'KG' };
+  });
   saveDB();
 }
 function saveDB() { localStorage.setItem('salsas_tablet_db', JSON.stringify(DB)); }
@@ -943,15 +977,37 @@ function renderDash() {
   const crit = ings.filter(i=>i.stock<=i.minStock);
   const val = ings.reduce((s,i)=>s+(i.stock*i.precio),0);
   const today = DB.history.filter(h=>new Date(h.date).toDateString()===new Date().toDateString()).length;
+  const prodHoy = DB.history.filter(h=>h.type==='produccion'&&new Date(h.date).toDateString()===new Date().toDateString()).length;
 
+  // KPIs — sin valor monetario visible
   document.getElementById('kpi-grid').innerHTML = `
-    <div class="kpi blue"><div class="kpi-icon">🧂</div><div class="kpi-label">Total Insumos</div><div class="kpi-value">${ings.length}</div><div class="kpi-sub">ingredientes</div></div>
-    <div class="kpi ${crit.length>0?'sky':'teal'}"><div class="kpi-icon">⚠️</div><div class="kpi-label">Stock Crítico</div><div class="kpi-value">${crit.length}</div><div class="kpi-sub">${crit.length>0?'por reponer':'todo OK'}</div></div>
-    <div class="kpi green"><div class="kpi-icon">💰</div><div class="kpi-label">Valor Stock</div><div class="kpi-value">$${(val/1000).toFixed(0)}K</div><div class="kpi-sub">CLP en stock</div></div>
+    <div class="kpi blue"><div class="kpi-icon">🧂</div><div class="kpi-label">Insumos</div><div class="kpi-value">${ings.length}</div><div class="kpi-sub">ingredientes</div></div>
+    <div class="kpi ${crit.length>0?'sky':'teal'}"><div class="kpi-icon">⚠️</div><div class="kpi-label">Críticos</div><div class="kpi-value">${crit.length}</div><div class="kpi-sub">${crit.length>0?'por reponer':'todo OK'}</div></div>
+    <div class="kpi green"><div class="kpi-icon">⚙️</div><div class="kpi-label">Prod. Hoy</div><div class="kpi-value">${prodHoy}</div><div class="kpi-sub">lotes producidos</div></div>
     <div class="kpi sky"><div class="kpi-icon">📋</div><div class="kpi-label">Mov. Hoy</div><div class="kpi-value">${today}</div><div class="kpi-sub">registros</div></div>
   `;
 
-  // stock bars top 10
+  // Valor total discreto
+  document.getElementById('dash-valor-total').textContent = '$'+val.toLocaleString('es-CL',{maximumFractionDigits:0})+' CLP';
+
+  // Productos terminados
+  const fg = Object.values(DB.finishedGoods||{});
+  document.getElementById('dash-terminados').innerHTML = fg.length===0
+    ? '<div style="color:var(--muted);font-size:13px;text-align:center;padding:8px">Sin productos registrados</div>'
+    : fg.map(p=>{
+        const st = p.stock<=0?{cls:'badge-out',lbl:'Sin stock'}:p.stock<2?{cls:'badge-crit',lbl:'Bajo'}:{cls:'badge-ok',lbl:'En stock'};
+        return `<div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:8px;border:1px solid var(--border)">
+          <div style="font-size:22px">${RECIPE_ICONS[p.id]||'🍶'}</div>
+          <div style="flex:1"><div style="font-size:14px;font-weight:800">${p.nombre}</div></div>
+          <div style="text-align:right">
+            <div style="font-size:18px;font-weight:900;color:${p.stock<=0?'var(--danger)':p.stock<2?'var(--orange)':'var(--accent)'}">${p.stock.toFixed(2)}</div>
+            <div style="font-size:11px;color:var(--muted)">${p.unit}</div>
+          </div>
+          <span class="badge ${st.cls}">${st.lbl}</span>
+        </div>`;
+      }).join('');
+
+  // Stock bars insumos
   document.getElementById('stock-bars').innerHTML = ings.slice(0,10).map(i=>{
     const pct = i.minStock>0 ? Math.min(100,Math.round((i.stock/(i.minStock*5))*100)) : 50;
     const cls = pct<20?'crit':pct<50?'low':'ok';
@@ -961,7 +1017,7 @@ function renderDash() {
     </div>`;
   }).join('');
 
-  // critical
+  // Critical
   document.getElementById('critical-list').innerHTML = crit.length===0
     ? '<div style="color:var(--green);font-size:14px;font-weight:700;padding:8px 0">✓ Todos los insumos tienen stock suficiente</div>'
     : crit.map(i=>`<div class="alert-item">
@@ -970,24 +1026,7 @@ function renderDash() {
         <div class="alert-stock">${i.stock} ${i.unidad}</div>
       </div>`).join('');
 
-  // rotation
-  const recipes = Object.values(DB.recipes);
-  const maxC = Math.max(...recipes.map(r=>DB.history.filter(h=>h.note&&h.note.includes(r.nombre)).length),1);
-  document.getElementById('rot-chart').innerHTML = `<div class="rot-bar-wrap">
-    ${recipes.map(r=>{
-      const c=DB.history.filter(h=>h.note&&h.note.includes(r.nombre)).length;
-      const h=Math.max(6,Math.round((c/maxC)*60));
-      return `<div class="rot-bar-col"><div class="rot-bar-cnt">${c}</div><div class="rot-bar" style="height:${h}px"></div><div class="rot-bar-lbl">${r.nombre.slice(0,7)}</div></div>`;
-    }).join('')}
-  </div><div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center;font-weight:600">Producciones por receta</div>`;
-
-  // recent
-  const recent = [...DB.history].reverse().slice(0,6);
-  document.getElementById('dash-history').innerHTML = recent.length===0
-    ? '<div style="color:var(--muted);font-size:14px;text-align:center;padding:12px">Sin movimientos aún</div>'
-    : recent.map(h=>histRow(h)).join('');
-
-  // ventas del día
+  // Ventas del día
   const hoy = new Date().toDateString();
   const ventasHoy = DB.history.filter(h=>h.type==='venta'&&new Date(h.date).toDateString()===hoy);
   const mermasHoy = DB.history.filter(h=>h.type==='merma'&&new Date(h.date).toDateString()===hoy);
@@ -998,8 +1037,7 @@ function renderDash() {
     document.getElementById('dash-ventas-hoy').innerHTML =
       '<div style="color:var(--muted);font-size:14px;text-align:center;padding:12px">Sin salidas registradas hoy</div>';
   } else {
-    // Agrupar por salsa
-    const byRecipe = {};
+    const byRecipe={};
     [...ventasHoy,...mermasHoy].forEach(h=>{
       const key=h.items[0]?.nombre||'?';
       if(!byRecipe[key]) byRecipe[key]={nombre:key,ventas:0,mermas:0,icon:RECIPE_ICONS[h.recipeId]||'🍶',unit:h.items[0]?.unidad||'KG'};
@@ -1009,12 +1047,12 @@ function renderDash() {
     document.getElementById('dash-ventas-hoy').innerHTML = `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
         <div style="background:rgba(24,184,112,0.08);border:1px solid rgba(24,184,112,0.2);border-radius:10px;padding:12px;text-align:center">
-          <div style="font-size:10px;color:var(--green);font-weight:800;text-transform:uppercase;letter-spacing:0.5px">Ventas hoy</div>
+          <div style="font-size:10px;color:var(--green);font-weight:800;text-transform:uppercase">Ventas hoy</div>
           <div style="font-size:22px;font-weight:900;color:var(--green)">${totalVentaKg.toFixed(2)}</div>
           <div style="font-size:11px;color:var(--muted)">${ventasHoy.length} registro(s)</div>
         </div>
         <div style="background:rgba(224,80,80,0.07);border:1px solid rgba(224,80,80,0.15);border-radius:10px;padding:12px;text-align:center">
-          <div style="font-size:10px;color:var(--danger);font-weight:800;text-transform:uppercase;letter-spacing:0.5px">Mermas hoy</div>
+          <div style="font-size:10px;color:var(--danger);font-weight:800;text-transform:uppercase">Mermas hoy</div>
           <div style="font-size:22px;font-weight:900;color:var(--danger)">${totalMermaKg.toFixed(2)}</div>
           <div style="font-size:11px;color:var(--muted)">${mermasHoy.length} registro(s)</div>
         </div>
@@ -1027,6 +1065,12 @@ function renderDash() {
           ${rc.mermas>0?`<div style="text-align:center;padding:4px 10px;background:rgba(224,80,80,0.08);border-radius:7px"><div style="font-size:11px;color:var(--danger);font-weight:700">Merma</div><div style="font-size:14px;font-weight:800;color:var(--danger)">${rc.mermas.toFixed(3)} ${rc.unit}</div></div>`:''}
         </div>`).join('')}`;
   }
+
+  // Actividad reciente
+  const recent = [...DB.history].reverse().slice(0,6);
+  document.getElementById('dash-history').innerHTML = recent.length===0
+    ? '<div style="color:var(--muted);font-size:14px;text-align:center;padding:12px">Sin movimientos aún</div>'
+    : recent.map(h=>histRow(h)).join('');
 }
 
 function histRow(h) {
@@ -1196,8 +1240,13 @@ function submitProduccion() {
     date:new Date().toISOString(),
     note:`Producción ${r.nombre} — ${detalle}${descontar?' (ingredientes descontados)':''}${nota?' — '+nota:''}`
   });
+
+  // Sumar al stock de producto terminado
+  if(!DB.finishedGoods[id]) DB.finishedGoods[id]={id,nombre:r.nombre,stock:0,unit:b.unit};
+  DB.finishedGoods[id].stock = r2(DB.finishedGoods[id].stock + total);
+
   saveDB(); clearProdRec(); drawHistory();
-  toast(`Producción de ${r.nombre} registrada ✓${descontar?' — ingredientes descontados':''}`,'success');
+  toast(`Producción de ${r.nombre} registrada ✓ (+${total} ${b.unit} al stock)`,'success');
 }
 
 function clearProdRec() {
@@ -1298,17 +1347,20 @@ function updateIngPreview() {
   let total=modoQty==='unidades'?getTotalKgFromFormatos():parseFloat(document.getElementById('prod-litros').value)||0;
   if(total<=0){document.getElementById('prod-descuento-preview').style.display='none';return;}
   const r=DB.recipes[id]; const b=BATCH[id]; if(!r||!b)return;
-  const lines=r.ingredientes.map(ing=>{
-    const fu=ing.fu||(ing.cantidad/b.output); const needed=r3(fu*total);
-    const k=ing.nombre.toLowerCase().trim(); const idb=DB.ingredients[k];
-    const u=(ing.unidad||'').toUpperCase(); const needKg=u==='GRS'?needed/1000:needed;
-    const ok=idb?idb.stock>=needKg:false;
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:${ok?'#f0fff8':'#fff5f5'};border-radius:8px;margin-bottom:6px;border:1px solid ${ok?'rgba(24,184,112,0.2)':'rgba(224,80,80,0.2)'}">
-      <div><div style="font-size:13px;font-weight:700">${cap(ing.nombre)}</div><div style="font-size:10px;color:var(--muted)">${idb?'stock: '+idb.stock+' '+idb.unidad:'sin registro'}</div></div>
-      <div style="font-size:14px;font-weight:800;color:${ok?'var(--green)':'var(--danger)'}">−${needed} ${ing.unidad}</div>
+  const fg=DB.finishedGoods?.[id];
+  const disponible=fg?fg.stock:0;
+  const ok=disponible>=total;
+  document.getElementById('prod-ing-preview').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:13px;font-weight:800">${RECIPE_ICONS[id]||'🍶'} ${r.nombre}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Disponible: <b>${disponible.toFixed(3)} ${b.unit}</b></div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:16px;font-weight:900;color:${ok?'var(--green)':'var(--danger)'}">−${total} ${b.unit}</div>
+        <div style="font-size:11px;color:${ok?'var(--green)':'var(--danger)'};font-weight:700">${ok?'✓ Stock suficiente':'⚠ Stock insuficiente'}</div>
+      </div>
     </div>`;
-  }).join('');
-  document.getElementById('prod-ing-preview').innerHTML=`<div style="font-size:13px;color:var(--muted2);margin-bottom:8px;font-weight:600">Para <b>${total} ${b.unit}</b> de ${r.nombre}:</div>${lines}`;
   document.getElementById('prod-descuento-preview').style.display='block';
 }
 function submitProdSalida() {
@@ -1324,27 +1376,29 @@ function submitProdSalida() {
     detalle=`${total} ${BATCH[id]?.unit||'KG'}`;
   }
   if(total<=0){toast('Ingresa una cantidad mayor a 0','error');return;}
+
   const r=DB.recipes[id]; const b=BATCH[id]; const nota=document.getElementById('prod-nota').value.trim();
-  let ok=true;
-  r.ingredientes.forEach(ing=>{
-    const fu=ing.fu||(ing.cantidad/b.output); const needed=r3(fu*total);
-    const k=ing.nombre.toLowerCase().trim(); const idb=DB.ingredients[k]; if(!idb)return;
-    const u=(ing.unidad||'').toUpperCase(); const needKg=u==='GRS'?needed/1000:needed;
-    if(idb.stock<needKg){toast(`Stock insuficiente: ${k}`,'error');ok=false;}
-  });
-  if(!ok)return;
-  r.ingredientes.forEach(ing=>{
-    const fu=ing.fu||(ing.cantidad/b.output); const needed=r3(fu*total);
-    const k=ing.nombre.toLowerCase().trim(); const idb=DB.ingredients[k]; if(!idb)return;
-    const u=(ing.unidad||'').toUpperCase(); const needKg=u==='GRS'?needed/1000:needed;
-    idb.stock=r2(idb.stock-needKg);
-  });
-  DB.history.push({id:Date.now(),type:tipoSalida,subtype:'producto',recipeId:id,
-    items:[{nombre:r.nombre,qty:total,unidad:b.unit}],
+
+  // Verificar stock de PRODUCTO TERMINADO
+  if(!DB.finishedGoods[id]) DB.finishedGoods[id]={id,nombre:r.nombre,stock:0,unit:b.unit};
+  const fg = DB.finishedGoods[id];
+  if(fg.stock < total) {
+    toast(`Stock insuficiente de ${r.nombre}: hay ${fg.stock.toFixed(3)} ${b.unit}, necesitas ${total} ${b.unit}`,'error');
+    return;
+  }
+
+  // Descontar SOLO del stock de producto terminado
+  fg.stock = r2(fg.stock - total);
+
+  DB.history.push({
+    id:Date.now(), type:tipoSalida, subtype:'producto', recipeId:id,
+    items:[{nombre:r.nombre, qty:total, unidad:b.unit}],
     date:new Date().toISOString(),
-    note:`${tipoSalida==='venta'?'Venta':'Merma'} ${r.nombre} — ${detalle}${nota?' — '+nota:''}`});
+    note:`${tipoSalida==='venta'?'Venta':'Merma'} ${r.nombre} — ${detalle}${nota?' — '+nota:''}`
+  });
+
   saveDB(); clearProdForm(); drawHistory();
-  toast(`${tipoSalida==='venta'?'Venta':'Merma'} de ${r.nombre} registrada ✓`,'success');
+  toast(`${tipoSalida==='venta'?'Venta':'Merma'} de ${r.nombre} registrada ✓ (−${total} ${b.unit} del stock)`,'success');
 }
 function clearProdForm() {
   document.getElementById('prod-salsa').value='';
@@ -1416,7 +1470,16 @@ function drawHistory() {
     : r.map(h=>histRow(h)).join('');
 }
 
-// ═══════ INGREDIENTES ═══════
+// ═══════ STOCK (INGREDIENTES + TERMINADOS) ═══════
+let stockTab = 'insumos';
+function setStockTab(tab) {
+  stockTab = tab;
+  document.getElementById('spanel-insumos').style.display    = tab==='insumos'   ?'block':'none';
+  document.getElementById('spanel-terminados').style.display = tab==='terminados'?'block':'none';
+  document.getElementById('stab-insumos').classList.toggle('active-tab',    tab==='insumos');
+  document.getElementById('stab-terminados').classList.toggle('active-tab', tab==='terminados');
+  if(tab==='terminados') drawTerminados();
+}
 function renderIngs() { drawIngList(Object.values(DB.ingredients)); }
 function filterIngs() {
   const q=document.getElementById('ing-search').value.toLowerCase();
@@ -1437,6 +1500,50 @@ function drawIngList(ings) {
       <span class="badge ${st.cls}">${st.label}</span>
     </div>`;
   }).join('');
+}
+function drawTerminados() {
+  const fg = Object.values(DB.finishedGoods||{});
+  document.getElementById('terminados-list').innerHTML = fg.map(p=>{
+    const st = p.stock<=0?{cls:'badge-out',lbl:'Sin stock'}:p.stock<1?{cls:'badge-crit',lbl:'Bajo'}:{cls:'badge-ok',lbl:'En stock'};
+    const b = BATCH[p.id];
+    const costUnit = (() => {
+      const r = DB.recipes[p.id]; if(!r||!b) return 0;
+      return r.ingredientes.reduce((s,ing)=>{
+        const fu=ing.fu||(ing.cantidad/b.output); const k=ing.nombre.toLowerCase().trim();
+        const precio=DB.ingredients[k]?.precio||0; const u=(ing.unidad||'').toUpperCase();
+        return s+(u==='GRS'?fu/1000:fu)*precio;
+      },0);
+    })();
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="font-size:28px">${RECIPE_ICONS[p.id]||'🍶'}</div>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:800">${p.nombre}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Costo unitario: $${costUnit.toFixed(0)} / ${p.unit}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:22px;font-weight:900;color:${p.stock<=0?'var(--danger)':p.stock<1?'var(--orange)':'var(--accent)'}">${p.stock.toFixed(3)}</div>
+          <div style="font-size:12px;color:var(--muted);font-weight:700">${p.unit} disponibles</div>
+        </div>
+        <span class="badge ${st.cls}">${st.lbl}</span>
+      </div>
+      <!-- mini barra visual -->
+      <div style="margin-top:10px">
+        <div class="sbar-track"><div class="sbar-fill ok" style="width:${Math.min(100,p.stock*10)}%"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+  // Valor total discreto
+  document.getElementById('terminados-valor').textContent =
+    'Valor estimado en producto terminado: $'+fg.reduce((s,p)=>{
+      const b=BATCH[p.id]; const r=DB.recipes[p.id]; if(!r||!b)return s;
+      const cu=r.ingredientes.reduce((ss,ing)=>{
+        const fu=ing.fu||(ing.cantidad/b.output); const k=ing.nombre.toLowerCase().trim();
+        const precio=DB.ingredients[k]?.precio||0; const u=(ing.unidad||'').toUpperCase();
+        return ss+(u==='GRS'?fu/1000:fu)*precio;
+      },0);
+      return s+cu*p.stock;
+    },0).toLocaleString('es-CL',{maximumFractionDigits:0})+' CLP';
 }
 
 function openIngModal() {
