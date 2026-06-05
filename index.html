@@ -12,6 +12,10 @@
 <link id="app-icon" rel="icon" type="image/png">
 <link id="apple-icon" rel="apple-touch-icon">
 <title>Salsas · Inventario</title>
+
+<!-- Firebase SDK (compat version — funciona sin bundler) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
 // Genera el ícono dinámicamente con canvas — aparece en el acceso directo
 (function(){
@@ -408,7 +412,16 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 </style>
 </head>
 <body>
-<div id="app">
+<!-- SPLASH (cargando Firebase) -->
+<div id="splash" style="position:fixed;inset:0;background:linear-gradient(135deg,#0f4c8a,#0a3566);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px">
+  <div style="font-size:60px">🍶</div>
+  <div style="font-family:var(--font);font-size:22px;font-weight:900;color:#7dd3fc">Salsas</div>
+  <div style="font-family:var(--font);font-size:13px;color:rgba(255,255,255,0.5)">Conectando con Firebase...</div>
+  <div style="width:40px;height:40px;border:3px solid rgba(125,211,252,0.2);border-top-color:#7dd3fc;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<div id="app" style="display:none">
 
 <!-- HEADER -->
 <div id="header">
@@ -416,9 +429,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
     <div id="header-title">🍶 Salsas</div>
     <div id="header-sub">GESTIÓN DE INVENTARIO</div>
   </div>
-  <div id="header-clock">
-    <div id="hclock">--:--</div>
-    <div id="hdate">---</div>
+  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+    <div id="header-clock">
+      <div id="hclock">--:--</div>
+      <div id="hdate">---</div>
+    </div>
+    <div id="conn-status" style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4)">● Conectando...</div>
   </div>
 </div>
 
@@ -774,7 +790,109 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 
 <script>
 // ═══════ DATA ═══════
+// ═══════ FIREBASE CONFIG ═══════
+const firebaseConfig = {
+  apiKey: "AIzaSyAXfIbiqBVcQ3T1CRSpjuyGIWUP4uyNZeM",
+  authDomain: "app-salsas.firebaseapp.com",
+  databaseURL: "https://app-salsas-default-rtdb.firebaseio.com",
+  projectId: "app-salsas",
+  storageBucket: "app-salsas.firebasestorage.app",
+  messagingSenderId: "1035114035043",
+  appId: "1:1035114035043:web:870992a617bbbea8aa4556"
+};
+firebase.initializeApp(firebaseConfig);
+const fbDB = firebase.database();
+const DB_REF = fbDB.ref('salsas');
+
 let DB = { ingredients:{}, recipes:{}, history:[], finishedGoods:{} };
+let fbSaveTimer = null;
+
+// ═══════ FIREBASE SAVE (debounced 800ms) ═══════
+function saveDB() {
+  // Guarda en localStorage inmediatamente como respaldo offline
+  try { localStorage.setItem('salsas_tablet_db', JSON.stringify(DB)); } catch(e){}
+  // Sube a Firebase con debounce para no saturar escrituras
+  if(fbSaveTimer) clearTimeout(fbSaveTimer);
+  fbSaveTimer = setTimeout(() => {
+    DB_REF.set(DB)
+      .then(()=> setConnStatus(true))
+      .catch(e => { console.warn('Firebase write error:', e); setConnStatus(false); });
+  }, 800);
+}
+
+function setConnStatus(online) {
+  const el = document.getElementById('conn-status');
+  if(!el) return;
+  el.textContent = online ? '🟢 Sincronizado' : '🔴 Sin conexión';
+  el.style.color = online ? 'var(--green)' : 'var(--danger)';
+}
+
+// ═══════ INIT DB ═══════
+function initDB() {
+  showSplash(true);
+
+  // Escucha cambios en tiempo real desde Firebase
+  DB_REF.on('value', snapshot => {
+    const data = snapshot.val();
+    if (data) {
+      DB = data;
+      // Migración: agregar finishedGoods si no existe
+      if (!DB.finishedGoods) {
+        DB.finishedGoods = {};
+        BASE_RECIPES.forEach(r => {
+          DB.finishedGoods[r.id] = { id:r.id, nombre:r.nombre, stock:0, unit:BATCH[r.id]?.unit||'KG' };
+        });
+      }
+      // Migración: asegurar recipes si no existen
+      if (!DB.recipes || Object.keys(DB.recipes).length === 0) {
+        DB.recipes = {};
+        BASE_RECIPES.forEach(r => { DB.recipes[r.id] = JSON.parse(JSON.stringify(r)); });
+      }
+      if (!DB.history) DB.history = [];
+    } else {
+      // Primera vez: cargar datos base
+      BASE_INGS.forEach(i => { DB.ingredients[i.nombre.toLowerCase().trim()] = {...i}; });
+      BASE_RECIPES.forEach(r => { DB.recipes[r.id] = JSON.parse(JSON.stringify(r)); });
+      BASE_RECIPES.forEach(r => {
+        DB.finishedGoods[r.id] = { id:r.id, nombre:r.nombre, stock:0, unit:BATCH[r.id]?.unit||'KG' };
+      });
+      DB.history = [];
+      // Guardar datos base en Firebase
+      DB_REF.set(DB);
+    }
+    setConnStatus(true);
+    showSplash(false);
+    renderDash();
+  }, error => {
+    // Firebase falló — usar localStorage como fallback
+    console.warn('Firebase error, using localStorage:', error);
+    setConnStatus(false);
+    const saved = localStorage.getItem('salsas_tablet_db');
+    if (saved) {
+      DB = JSON.parse(saved);
+      if (!DB.finishedGoods) {
+        DB.finishedGoods = {};
+        BASE_RECIPES.forEach(r => {
+          DB.finishedGoods[r.id] = { id:r.id, nombre:r.nombre, stock:0, unit:BATCH[r.id]?.unit||'KG' };
+        });
+      }
+    } else {
+      BASE_INGS.forEach(i => { DB.ingredients[i.nombre.toLowerCase().trim()] = {...i}; });
+      BASE_RECIPES.forEach(r => { DB.recipes[r.id] = JSON.parse(JSON.stringify(r)); });
+      BASE_RECIPES.forEach(r => {
+        DB.finishedGoods[r.id] = { id:r.id, nombre:r.nombre, stock:0, unit:BATCH[r.id]?.unit||'KG' };
+      });
+      DB.history = [];
+    }
+    showSplash(false);
+    renderDash();
+  });
+}
+
+function showSplash(show) {
+  document.getElementById('splash').style.display = show ? 'flex' : 'none';
+  document.getElementById('app').style.display = show ? 'none' : 'flex';
+}
 
 const EVAP = ['2001','2002'];
 const BATCH = {
@@ -899,30 +1017,6 @@ const BASE_INGS = [
   {nombre:"aceite",unidad:"L",stock:2,minStock:0.5,precio:1500},
   {nombre:"pulpa de maracuya",unidad:"KG",stock:3,minStock:1,precio:7046},
 ];
-
-function initDB() {
-  const s = localStorage.getItem('salsas_tablet_db');
-  if (s) {
-    DB = JSON.parse(s);
-    // Migración: agregar finishedGoods si no existe
-    if (!DB.finishedGoods) {
-      DB.finishedGoods = {};
-      BASE_RECIPES.forEach(r => {
-        DB.finishedGoods[r.id] = { id:r.id, nombre:r.nombre, stock:0, unit:BATCH[r.id]?.unit||'KG' };
-      });
-      saveDB();
-    }
-    return;
-  }
-  BASE_INGS.forEach(i => { DB.ingredients[i.nombre.toLowerCase().trim()] = {...i}; });
-  BASE_RECIPES.forEach(r => { DB.recipes[r.id] = JSON.parse(JSON.stringify(r)); });
-  // Inicializar stock de productos terminados en 0
-  BASE_RECIPES.forEach(r => {
-    DB.finishedGoods[r.id] = { id:r.id, nombre:r.nombre, stock:0, unit:BATCH[r.id]?.unit||'KG' };
-  });
-  saveDB();
-}
-function saveDB() { localStorage.setItem('salsas_tablet_db', JSON.stringify(DB)); }
 
 // ═══════ CLOCK ═══════
 function tickClock() {
@@ -1785,8 +1879,7 @@ function doCalc() {
 document.getElementById('ing-modal').addEventListener('click',function(e){if(e.target===this)closeIngModal()});
 
 // ═══════ INIT ═══════
-initDB();
-renderDash();
+initDB(); // Firebase listener carga datos y llama renderDash() cuando están listos
 </script>
 </body>
 </html>
