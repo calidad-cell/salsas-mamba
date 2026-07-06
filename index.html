@@ -1627,17 +1627,12 @@ function drawIngList(ings) {
 function drawTerminados() {
   const fg = Object.values(DB.finishedGoods||{});
 
-  // Formatos estándar por envase para contar unidades
-  const FORMATOS_UNIDADES = {
-    '2001': null, // litros — no cuenta unidades
-    '2002': null, // litros — no cuenta unidades
-  };
-  // Resto: 500g, 450g, 250g → calcular cuántos envases hay de cada tipo
+  // Salsas líquidas (muestran litros con 2 decimales)
+  const LIQUIDAS = ['2001','2002']; // Vinagre, Agridulce
 
   document.getElementById('terminados-list').innerHTML = fg.map(p=>{
-    const st = p.stock<=0?{cls:'badge-out',lbl:'Sin stock'}:p.stock<1?{cls:'badge-crit',lbl:'Bajo'}:{cls:'badge-ok',lbl:'En stock'};
     const b = BATCH[p.id];
-    const isLiquid = EVAP.includes(p.id); // vinagre y agridulce = litros
+    const isLiquid = LIQUIDAS.includes(p.id);
 
     const costUnit = (() => {
       const r = DB.recipes[p.id]; if(!r||!b) return 0;
@@ -1648,57 +1643,98 @@ function drawTerminados() {
       },0);
     })();
 
-    // Conteo de unidades para salsas sólidas (no vinagre ni agridulce)
-    let unidadesHTML = '';
-    if(!isLiquid && p.stock > 0) {
-      const totalGrs = p.stock * 1000;
-      const u500 = Math.floor(totalGrs / 500);
-      const resto500 = totalGrs % 500;
-      const u450 = Math.floor(resto500 / 450);
-      const resto450 = resto500 % 450;
-      const u250 = Math.floor(resto450 / 250);
-      const restoFinal = Math.round(resto450 % 250);
-
-      const partes = [];
-      if(u500>0)  partes.push(`<span style="background:rgba(26,127,212,0.1);color:var(--accent);padding:3px 8px;border-radius:6px;font-weight:800;font-size:12px">${u500} × 500g</span>`);
-      if(u450>0)  partes.push(`<span style="background:rgba(14,165,160,0.1);color:var(--teal);padding:3px 8px;border-radius:6px;font-weight:800;font-size:12px">${u450} × 450g</span>`);
-      if(u250>0)  partes.push(`<span style="background:rgba(91,141,238,0.1);color:var(--accent4);padding:3px 8px;border-radius:6px;font-weight:800;font-size:12px">${u250} × 250g</span>`);
-      if(restoFinal>0) partes.push(`<span style="background:rgba(240,112,48,0.1);color:var(--orange);padding:3px 8px;border-radius:6px;font-weight:800;font-size:12px">1 × ${restoFinal}g (resto)</span>`);
-
-      if(partes.length>0) {
-        unidadesHTML = `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-          <span style="font-size:11px;color:var(--muted);font-weight:700">Unidades estimadas:</span>
-          ${partes.join('')}
-        </div>`;
-      }
+    // ── SALSAS LÍQUIDAS: Vinagre y Agridulce ─────────────────
+    if(isLiquid) {
+      const st = p.stock<=0?{cls:'badge-out',lbl:'Sin stock'}:p.stock<1?{cls:'badge-crit',lbl:'Bajo'}:{cls:'badge-ok',lbl:'En stock'};
+      const maxStock = b ? b.output * 2 : 10;
+      const pct = Math.min(100, (p.stock / maxStock) * 100);
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:28px">${RECIPE_ICONS[p.id]||'🍶'}</div>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:800">${p.nombre}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Costo: $${fmtNum(costUnit,0)} / ${p.unit}</div>
+          </div>
+          <div style="text-align:right;margin-right:6px">
+            <div style="font-size:26px;font-weight:900;color:${p.stock<=0?'var(--danger)':p.stock<2?'var(--orange)':'var(--accent)'}">${fmtNum(p.stock,2)}</div>
+            <div style="font-size:12px;color:var(--muted);font-weight:700">${p.unit} disponibles</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+            <span class="badge ${st.cls}">${st.lbl}</span>
+            <button class="btn btn-ghost btn-sm" style="padding:5px 10px;font-size:12px" onclick="editTerminado('${p.id}')">✎ Editar</button>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="sbar-track"><div class="sbar-fill ok" style="width:${pct}%"></div></div>
+        </div>
+      </div>`;
     }
 
-    // Barra visual: max = rendimiento de un lote
-    const maxStock = b ? b.output * 2 : 10;
-    const pct = Math.min(100, (p.stock / maxStock) * 100);
+    // ── SALSAS SÓLIDAS: mostrar principalmente en unidades ───
+    const totalGrs = Math.round(p.stock * 1000);
+
+    // Calcular unidades por formato
+    let resto = totalGrs;
+    const u500 = Math.floor(resto / 500); resto = resto % 500;
+    const u450 = Math.floor(resto / 450); resto = resto % 450;
+    const u250 = Math.floor(resto / 250); resto = Math.round(resto % 250);
+
+    const totalUnidades = u500 + u450 + u250 + (resto > 0 ? 1 : 0);
+    const st = p.stock<=0?{cls:'badge-out',lbl:'Sin stock'}:totalUnidades<2?{cls:'badge-crit',lbl:'Bajo'}:{cls:'badge-ok',lbl:'En stock'};
+
+    // Badges de unidades
+    const badges = [];
+    if(u500>0) badges.push(`
+      <div style="background:rgba(26,127,212,0.08);border:1px solid rgba(26,127,212,0.2);border-radius:10px;padding:10px 14px;text-align:center;min-width:80px">
+        <div style="font-size:22px;font-weight:900;color:var(--accent)">${u500}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">uds × 500g</div>
+      </div>`);
+    if(u450>0) badges.push(`
+      <div style="background:rgba(14,165,160,0.08);border:1px solid rgba(14,165,160,0.2);border-radius:10px;padding:10px 14px;text-align:center;min-width:80px">
+        <div style="font-size:22px;font-weight:900;color:var(--teal)">${u450}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">uds × 450g</div>
+      </div>`);
+    if(u250>0) badges.push(`
+      <div style="background:rgba(91,141,238,0.08);border:1px solid rgba(91,141,238,0.2);border-radius:10px;padding:10px 14px;text-align:center;min-width:80px">
+        <div style="font-size:22px;font-weight:900;color:var(--accent4)">${u250}</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">uds × 250g</div>
+      </div>`);
+    if(resto>0) badges.push(`
+      <div style="background:rgba(240,112,48,0.08);border:1px solid rgba(240,112,48,0.2);border-radius:10px;padding:10px 14px;text-align:center;min-width:80px">
+        <div style="font-size:22px;font-weight:900;color:var(--orange)">1</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">resto ${resto}g</div>
+      </div>`);
+
+    const stockColor = p.stock<=0?'var(--danger)':totalUnidades<2?'var(--orange)':'var(--accent)';
 
     return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:12px">
+
+      <!-- Cabecera -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
         <div style="font-size:28px">${RECIPE_ICONS[p.id]||'🍶'}</div>
         <div style="flex:1">
           <div style="font-size:15px;font-weight:800">${p.nombre}</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px">
-            Costo: $${fmtNum(costUnit,0)} / ${p.unit}
+            Total: ${fmtNum(p.stock,3)} KG · Costo: $${fmtNum(costUnit,0)} / KG
           </div>
         </div>
-        <div style="text-align:right;margin-right:6px">
-          <div style="font-size:22px;font-weight:900;color:${p.stock<=0?'var(--danger)':p.stock<1?'var(--orange)':'var(--accent)'}">${fmtNum(p.stock,3)}</div>
-          <div style="font-size:12px;color:var(--muted);font-weight:700">${p.unit} disponibles</div>
+        <div style="text-align:center;background:${p.stock<=0?'rgba(224,80,80,0.08)':'rgba(26,127,212,0.08)'};border:1px solid ${p.stock<=0?'rgba(224,80,80,0.2)':'rgba(26,127,212,0.15)'};border-radius:10px;padding:8px 14px;margin-right:6px">
+          <div style="font-size:26px;font-weight:900;color:${stockColor};line-height:1">${totalUnidades}</div>
+          <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">unidades</div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
           <span class="badge ${st.cls}">${st.lbl}</span>
           <button class="btn btn-ghost btn-sm" style="padding:5px 10px;font-size:12px" onclick="editTerminado('${p.id}')">✎ Editar</button>
         </div>
       </div>
-      ${unidadesHTML}
-      <div style="margin-top:10px">
-        <div class="sbar-track"><div class="sbar-fill ok" style="width:${pct}%"></div></div>
-      </div>
+
+      <!-- Detalle por formato -->
+      ${p.stock > 0 ? `
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${badges.join('')}
+        ${badges.length===0?'<div style="font-size:12px;color:var(--muted);padding:8px">Sin stock suficiente para un envase completo</div>':''}
+      </div>` : '<div style="font-size:13px;color:var(--danger);font-weight:700;text-align:center;padding:6px 0">Sin stock disponible</div>'}
+
     </div>`;
   }).join('');
 
