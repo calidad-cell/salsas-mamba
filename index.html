@@ -449,10 +449,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
     <div class="kpi-grid" id="kpi-grid"></div>
 
     <!-- Productos terminados en stock -->
-    <div class="card">
-      <div class="card-title">🍶 Stock de Productos Terminados</div>
-      <div id="dash-terminados"></div>
-    </div>
 
     <div class="card">
       <div class="card-title">Nivel de Stock — Insumos</div>
@@ -751,16 +747,46 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
     <div class="modal-handle"></div>
     <div class="modal-title" id="ft-modal-title">Editar Stock</div>
     <input type="hidden" id="ft-edit-id">
-    <div class="form-group">
-      <label class="form-label">Stock Actual</label>
-      <div style="display:flex;gap:10px;align-items:center">
-        <input class="form-input" type="number" id="ft-stock" min="0" step="0.001" style="flex:1">
-        <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;font-size:15px;font-weight:800;color:var(--muted2)" id="ft-unit">KG</div>
+    <input type="hidden" id="ft-is-liquid">
+
+    <!-- Vista LÍQUIDAS (Vinagre / Agridulce) -->
+    <div id="ft-liquid-form">
+      <div class="form-group">
+        <label class="form-label">Stock Actual</label>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input class="form-input" type="number" id="ft-stock-liquid" min="0" step="0.01" style="flex:1">
+          <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;font-size:15px;font-weight:800;color:var(--muted2)" id="ft-unit-liquid">L</div>
+        </div>
       </div>
     </div>
+
+    <!-- Vista SÓLIDAS (por unidades) -->
+    <div id="ft-solid-form" style="display:none">
+      <div style="font-size:12px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Ingresa unidades por formato</div>
+
+      <!-- Encabezado -->
+      <div style="display:grid;grid-template-columns:1fr 80px 36px;gap:8px;padding:0 4px;margin-bottom:6px">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Formato</div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;text-align:center">Unidades</div>
+        <div></div>
+      </div>
+
+      <!-- Filas de formato -->
+      <div id="ft-formato-rows"></div>
+      <button class="add-dashed" onclick="addFtFormatoRow()" style="margin-bottom:12px">+ Agregar formato</button>
+
+      <!-- Total calculado -->
+      <div id="ft-total-display" style="display:none;background:rgba(26,127,212,0.07);border:1px solid rgba(26,127,212,0.15);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:13px;font-weight:700;color:var(--muted2)">Total KG calculado</div>
+          <div style="font-size:18px;font-weight:900;color:var(--accent)" id="ft-total-kg">0,000 KG</div>
+        </div>
+      </div>
+    </div>
+
     <div style="background:rgba(14,165,160,0.07);border:1px solid rgba(14,165,160,0.2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px">
       <div style="font-size:12px;color:var(--teal);font-weight:700">⚠ Ajuste manual de stock</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:3px">Usa esto solo para corregir diferencias de inventario. Los movimientos normales se registran en la pestaña Movimientos.</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">Solo para corregir diferencias. Los movimientos normales van en la pestaña Movimientos.</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <button class="btn btn-ghost btn-full" onclick="closeFtModal()">Cancelar</button>
@@ -769,9 +795,41 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
   </div>
 </div>
 
-</div><!-- /app -->
+<!-- Modal editar sachet -->
+<div class="modal-overlay" id="sachet-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="sachet-modal-title">Sachet</div>
+    <input type="hidden" id="sachet-edit-id">
 
-<!-- ▌ INGREDIENT MODAL (bottom sheet) ▌ -->
+    <div class="form-group">
+      <label class="form-label">ml por Sachet</label>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input class="form-input" type="number" id="sachet-ml" min="1" step="1" placeholder="ej: 15" style="flex:1">
+        <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;font-size:15px;font-weight:800;color:var(--muted2)">ml</div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:5px">Necesario para calcular cuántos litros se descuentan al registrar sachets</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Stock Actual (unidades)</label>
+      <input class="form-input" type="number" id="sachet-stock" min="0" step="1" placeholder="0">
+    </div>
+
+    <div style="background:rgba(26,127,212,0.06);border:1px solid rgba(26,127,212,0.15);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px" id="sachet-info-box">
+      <div style="font-size:12px;color:var(--accent);font-weight:700" id="sachet-info-text"></div>
+    </div>
+
+    <div style="background:rgba(14,165,160,0.07);border:1px solid rgba(14,165,160,0.2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--muted)">Al registrar una venta o merma de sachets, se descontará automáticamente del stock de litros del producto fuente (Vinagre o Agridulce).</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button class="btn btn-ghost btn-full" onclick="closeSachetModal()">Cancelar</button>
+      <button class="btn btn-primary btn-full" onclick="saveSachet()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="ing-modal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -851,44 +909,51 @@ function setConnStatus(online) {
   el.style.color = online ? 'var(--green)' : 'var(--danger)';
 }
 
-// ═══════ INIT DB ═══════
 function initDB() {
   showSplash(true);
 
-  // Escucha cambios en tiempo real desde Firebase
   DB_REF.on('value', snapshot => {
     const data = snapshot.val();
     if (data) {
       DB = data;
-      // Migración: agregar finishedGoods si no existe
       if (!DB.finishedGoods) {
         DB.finishedGoods = {};
         BASE_RECIPES.forEach(r => {
           DB.finishedGoods[r.id] = { id:r.id, nombre:r.nombre, stock:0, unit:BATCH[r.id]?.unit||'KG' };
         });
       }
-      // Migración: asegurar recipes si no existen
+      // Migración: agregar sachets si no existen
+      if (!DB.finishedGoods['S001']) DB.finishedGoods['S001'] = {...SACHETS['S001']};
+      if (!DB.finishedGoods['S002']) DB.finishedGoods['S002'] = {...SACHETS['S002']};
+      // Migración: si ml era null (versión antigua), setear 40ml
+      ['S001','S002'].forEach(sid => {
+        if(DB.finishedGoods[sid] && !DB.finishedGoods[sid].mlPorSachet) {
+          DB.finishedGoods[sid].mlPorSachet = 40;
+        }
+        if(DB.finishedGoods[sid]) {
+          BATCH[sid].mlPorSachet = DB.finishedGoods[sid].mlPorSachet;
+        }
+      });
       if (!DB.recipes || Object.keys(DB.recipes).length === 0) {
         DB.recipes = {};
         BASE_RECIPES.forEach(r => { DB.recipes[r.id] = JSON.parse(JSON.stringify(r)); });
       }
       if (!DB.history) DB.history = [];
     } else {
-      // Primera vez: cargar datos base
       BASE_INGS.forEach(i => { DB.ingredients[i.nombre.toLowerCase().trim()] = {...i}; });
       BASE_RECIPES.forEach(r => { DB.recipes[r.id] = JSON.parse(JSON.stringify(r)); });
       BASE_RECIPES.forEach(r => {
         DB.finishedGoods[r.id] = { id:r.id, nombre:r.nombre, stock:0, unit:BATCH[r.id]?.unit||'KG' };
       });
+      DB.finishedGoods['S001'] = {...SACHETS['S001']};
+      DB.finishedGoods['S002'] = {...SACHETS['S002']};
       DB.history = [];
-      // Guardar datos base en Firebase
       DB_REF.set(DB);
     }
     setConnStatus(true);
     showSplash(false);
     renderDash();
   }, error => {
-    // Firebase falló — usar localStorage como fallback
     console.warn('Firebase error, using localStorage:', error);
     setConnStatus(false);
     const saved = localStorage.getItem('salsas_tablet_db');
@@ -900,12 +965,16 @@ function initDB() {
           DB.finishedGoods[r.id] = { id:r.id, nombre:r.nombre, stock:0, unit:BATCH[r.id]?.unit||'KG' };
         });
       }
+      if (!DB.finishedGoods['S001']) DB.finishedGoods['S001'] = {...SACHETS['S001']};
+      if (!DB.finishedGoods['S002']) DB.finishedGoods['S002'] = {...SACHETS['S002']};
     } else {
       BASE_INGS.forEach(i => { DB.ingredients[i.nombre.toLowerCase().trim()] = {...i}; });
       BASE_RECIPES.forEach(r => { DB.recipes[r.id] = JSON.parse(JSON.stringify(r)); });
       BASE_RECIPES.forEach(r => {
         DB.finishedGoods[r.id] = { id:r.id, nombre:r.nombre, stock:0, unit:BATCH[r.id]?.unit||'KG' };
       });
+      DB.finishedGoods['S001'] = {...SACHETS['S001']};
+      DB.finishedGoods['S002'] = {...SACHETS['S002']};
       DB.history = [];
     }
     showSplash(false);
@@ -922,9 +991,17 @@ const EVAP = ['2001','2002'];
 const BATCH = {
   '2001':{size:47,unit:'L',output:42.3},'2002':{size:50,unit:'L',output:45},'2003':{size:13,unit:'L',output:13},
   '2004':{size:5.35,unit:'KG',output:5.35},'2005':{size:4.6,unit:'KG',output:4.6},'2006':{size:2.44,unit:'KG',output:2.44},
-  '2007':{size:6.58,unit:'KG',output:6.58},'2008':{size:3.23,unit:'KG',output:3.23},'2009':{size:3.38,unit:'KG',output:3.38},'2010':{size:5.72,unit:'KG',output:5.72}
+  '2007':{size:6.58,unit:'KG',output:6.58},'2008':{size:3.23,unit:'KG',output:3.23},'2009':{size:3.38,unit:'KG',output:3.38},'2010':{size:5.72,unit:'KG',output:5.72},
+  // Sachets — 40ml por sachet
+  'S001':{size:1,unit:'UNIDAD',output:1,mlPorSachet:40,fuenteId:'2001'}, // Sachet Vinagre
+  'S002':{size:1,unit:'UNIDAD',output:1,mlPorSachet:40,fuenteId:'2002'}, // Sachet Agridulce
 };
-const RECIPE_ICONS = {'2001':'🍶','2002':'🍯','2003':'🐟','2004':'🥗','2005':'🌶️','2006':'🍖','2007':'🍋','2008':'🫙','2009':'🥭','2010':'🍊'};
+const RECIPE_ICONS = {'2001':'🍶','2002':'🍯','2003':'🐟','2004':'🥗','2005':'🌶️','2006':'🍖','2007':'🍋','2008':'🫙','2009':'🥭','2010':'🍊','S001':'🧃','S002':'🧃'};
+// Sachets: stock en unidades, descuentan del producto terminado fuente en litros
+const SACHETS = {
+  'S001': {id:'S001', nombre:'Sachet Vinagre',    fuenteId:'2001', mlPorSachet:40, stock:0, unit:'UNIDAD'},
+  'S002': {id:'S002', nombre:'Sachet Agridulce',  fuenteId:'2002', mlPorSachet:40, stock:0, unit:'UNIDAD'},
+};
 
 const BASE_RECIPES = [
   {"id":"2001","nombre":"Vinagre","rendimiento":42.3,"unidadR":"L","ingredientes":[
@@ -1112,23 +1189,6 @@ function renderDash() {
 
   // Valor total discreto
   document.getElementById('dash-valor-total').textContent = '$'+val.toLocaleString('es-CL',{maximumFractionDigits:0})+' CLP';
-
-  // Productos terminados
-  const fg = Object.values(DB.finishedGoods||{});
-  document.getElementById('dash-terminados').innerHTML = fg.length===0
-    ? '<div style="color:var(--muted);font-size:13px;text-align:center;padding:8px">Sin productos registrados</div>'
-    : fg.map(p=>{
-        const st = p.stock<=0?{cls:'badge-out',lbl:'Sin stock'}:p.stock<2?{cls:'badge-crit',lbl:'Bajo'}:{cls:'badge-ok',lbl:'En stock'};
-        return `<div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:8px;border:1px solid var(--border)">
-          <div style="font-size:22px">${RECIPE_ICONS[p.id]||'🍶'}</div>
-          <div style="flex:1"><div style="font-size:14px;font-weight:800">${p.nombre}</div></div>
-          <div style="text-align:right">
-            <div style="font-size:18px;font-weight:900;color:${p.stock<=0?'var(--danger)':p.stock<2?'var(--orange)':'var(--accent)'}">${fmtNum(p.stock,3)}</div>
-            <div style="font-size:11px;color:var(--muted)">${p.unit}</div>
-          </div>
-          <span class="badge ${st.cls}">${st.lbl}</span>
-        </div>`;
-      }).join('');
 
   // Stock bars insumos
   document.getElementById('stock-bars').innerHTML = ings.slice(0,10).map(i=>{
@@ -1400,9 +1460,18 @@ function setModoQty(modo) {
 function drawProdPanel() {
   const sel = document.getElementById('prod-salsa');
   if(sel.options.length <= 1) {
+    // Salsas normales
     Object.values(DB.recipes).forEach(r => {
       const o = document.createElement('option');
       o.value = r.id; o.textContent = `${RECIPE_ICONS[r.id]||'🍶'} ${r.nombre}`;
+      sel.appendChild(o);
+    });
+    // Sachets
+    ['S001','S002'].forEach(sid => {
+      const p = DB.finishedGoods[sid];
+      if(!p) return;
+      const o = document.createElement('option');
+      o.value = sid; o.textContent = `🧃 ${p.nombre}`;
       sel.appendChild(o);
     });
   }
@@ -1489,6 +1558,46 @@ function updateIngPreview() {
 function submitProdSalida() {
   const id=document.getElementById('prod-salsa').value;
   if(!id){toast('Selecciona una salsa','error');return;}
+
+  // ── Caso SACHET ──────────────────────────────────────
+  const isSachet = id.startsWith('S');
+  if(isSachet) {
+    const p = DB.finishedGoods[id];
+    if(!p){toast('Sachet no encontrado','error');return;}
+    const ml = p.mlPorSachet;
+    const fuente = DB.finishedGoods[p.fuenteId];
+    // Cantidad: solo por unidades para sachets
+    let unidades = 0;
+    if(modoQty==='litros') {
+      unidades = parseInt(document.getElementById('prod-litros').value)||0;
+    } else {
+      unidades = formatoRows.reduce((s,f)=>s+(parseInt(f.cantidad)||0),0);
+    }
+    if(unidades<=0){toast('Ingresa una cantidad mayor a 0','error');return;}
+    if(p.stock < unidades){toast(`Stock insuficiente: hay ${p.stock} sachets, necesitas ${unidades}`,'error');return;}
+    // Descontar litros de la fuente si está configurado
+    if(ml && fuente) {
+      const litrosDescontar = r3((unidades * ml) / 1000);
+      if(fuente.stock < litrosDescontar){
+        toast(`Stock insuficiente en ${fuente.nombre}: hay ${fmtNum(fuente.stock,2)} L, necesitas ${fmtNum(litrosDescontar,2)} L`,'error');
+        return;
+      }
+      fuente.stock = r3(fuente.stock - litrosDescontar);
+    }
+    p.stock = p.stock - unidades;
+    const nota = document.getElementById('prod-nota').value.trim();
+    DB.history.push({
+      id:Date.now(), type:tipoSalida, subtype:'sachet', recipeId:id,
+      items:[{nombre:p.nombre, qty:unidades, unidad:'UNIDAD'}],
+      date:new Date().toISOString(),
+      note:`${tipoSalida==='venta'?'Venta':'Merma'} ${p.nombre} — ${unidades} sachets${ml?' (−'+fmtNum((unidades*ml/1000),3)+' L de '+fuente?.nombre+')':''}${nota?' — '+nota:''}`
+    });
+    saveDB(); clearProdForm(); drawHistory();
+    toast(`${tipoSalida==='venta'?'Venta':'Merma'} de ${unidades} sachets registrada ✓${ml?' — se descontaron '+fmtNum((unidades*ml/1000),3)+' L':''}`,'success');
+    return;
+  }
+
+  // ── Caso SALSA NORMAL ────────────────────────────────
   let total=0; let detalle='';
   if(modoQty==='unidades'){
     total=getTotalKgFromFormatos();
@@ -1499,29 +1608,22 @@ function submitProdSalida() {
     detalle=`${total} ${BATCH[id]?.unit||'KG'}`;
   }
   if(total<=0){toast('Ingresa una cantidad mayor a 0','error');return;}
-
   const r=DB.recipes[id]; const b=BATCH[id]; const nota=document.getElementById('prod-nota').value.trim();
-
-  // Verificar stock de PRODUCTO TERMINADO
   if(!DB.finishedGoods[id]) DB.finishedGoods[id]={id,nombre:r.nombre,stock:0,unit:b.unit};
   const fg = DB.finishedGoods[id];
   if(fg.stock < total) {
-    toast(`Stock insuficiente de ${r.nombre}: hay ${fg.stock.toFixed(3)} ${b.unit}, necesitas ${total} ${b.unit}`,'error');
+    toast(`Stock insuficiente de ${r.nombre}: hay ${fmtNum(fg.stock,3)} ${b.unit}, necesitas ${total} ${b.unit}`,'error');
     return;
   }
-
-  // Descontar SOLO del stock de producto terminado
   fg.stock = r2(fg.stock - total);
-
   DB.history.push({
     id:Date.now(), type:tipoSalida, subtype:'producto', recipeId:id,
     items:[{nombre:r.nombre, qty:total, unidad:b.unit}],
     date:new Date().toISOString(),
     note:`${tipoSalida==='venta'?'Venta':'Merma'} ${r.nombre} — ${detalle}${nota?' — '+nota:''}`
   });
-
   saveDB(); clearProdForm(); drawHistory();
-  toast(`${tipoSalida==='venta'?'Venta':'Merma'} de ${r.nombre} registrada ✓ (−${total} ${b.unit} del stock)`,'success');
+  toast(`${tipoSalida==='venta'?'Venta':'Merma'} de ${r.nombre} registrada ✓`,'success');
 }
 function clearProdForm() {
   document.getElementById('prod-salsa').value='';
@@ -1738,8 +1840,43 @@ function drawTerminados() {
     </div>`;
   }).join('');
 
-  // Valor total discreto
-  const valorTotal = fg.reduce((s,p)=>{
+  // ── SACHETS al final ──────────────────────────────────
+  const sachetHTML = ['S001','S002'].map(sid => {
+    const p = DB.finishedGoods[sid];
+    if(!p) return '';
+    const ml = p.mlPorSachet;
+    const fuente = DB.finishedGoods[p.fuenteId];
+    const fuenteDisp = fuente ? `${fmtNum(fuente.stock,2)} L disponibles en ${fuente.nombre}` : '—';
+    const maxDesde = (ml && fuente && fuente.stock > 0) ? Math.floor((fuente.stock * 1000) / ml) : null;
+    const st = p.stock<=0?{cls:'badge-out',lbl:'Sin stock'}:p.stock<10?{cls:'badge-crit',lbl:'Bajo'}:{cls:'badge-ok',lbl:'En stock'};
+    return `<div style="background:var(--surface);border:2px solid rgba(26,127,212,0.25);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+        <div style="font-size:28px">🧃</div>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:800">${p.nombre}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">
+            ${ml ? `${ml} ml / sachet · ${fuenteDisp}` : `⚙ ml/sachet no configurado · ${fuenteDisp}`}
+          </div>
+          ${maxDesde!==null ? `<div style="font-size:11px;color:var(--teal);font-weight:700;margin-top:2px">Se pueden envasar ~${maxDesde} sachets más del stock disponible</div>` : ''}
+        </div>
+        <div style="text-align:center;background:rgba(26,127,212,0.07);border:1px solid rgba(26,127,212,0.15);border-radius:10px;padding:8px 14px;margin-right:6px">
+          <div style="font-size:26px;font-weight:900;color:${p.stock<=0?'var(--danger)':'var(--accent)'};line-height:1">${p.stock}</div>
+          <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">unidades</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+          <span class="badge ${st.cls}">${st.lbl}</span>
+          <button class="btn btn-ghost btn-sm" style="padding:5px 10px;font-size:12px" onclick="editSachet('${sid}')">✎ Editar</button>
+        </div>
+      </div>
+      ${!ml ? `<div style="background:rgba(245,200,66,0.1);border:1px solid rgba(245,200,66,0.3);border-radius:8px;padding:8px 12px;font-size:12px;color:#8a6d00;font-weight:600">
+        ⚠ Configura los ml por sachet para calcular descuento de litros automáticamente
+        <button class="btn btn-ghost btn-sm" style="margin-left:8px;font-size:11px;padding:3px 10px" onclick="editSachet('${sid}')">Configurar</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+  document.getElementById('terminados-list').innerHTML += sachetHTML;
+
+  // Valor total discreto((s,p)=>{
     const b=BATCH[p.id]; const r=DB.recipes[p.id]; if(!r||!b)return s;
     const cu=r.ingredientes.reduce((ss,ing)=>{
       const fu=ing.fu||(ing.cantidad/b.output); const k=ing.nombre.toLowerCase().trim();
@@ -1752,30 +1889,139 @@ function drawTerminados() {
     'Valor estimado en producto terminado: $'+fmtNum(valorTotal,0)+' CLP';
 }
 
-// Modal editar producto terminado
+// ── Modal editar producto terminado ──
+const LIQUIDAS_IDS = ['2001','2002'];
+let ftFormatoRows = [{gramos:'500', cantidad:''}];
+
 function editTerminado(id) {
   const p = DB.finishedGoods[id];
   const b = BATCH[id];
   if(!p) return;
+  const isLiquid = LIQUIDAS_IDS.includes(id);
+
   document.getElementById('ft-modal-title').textContent = `Editar Stock — ${p.nombre}`;
   document.getElementById('ft-edit-id').value = id;
-  document.getElementById('ft-stock').value = p.stock;
-  document.getElementById('ft-unit').textContent = p.unit;
+  document.getElementById('ft-is-liquid').value = isLiquid ? '1' : '0';
+
+  if(isLiquid) {
+    document.getElementById('ft-liquid-form').style.display = 'block';
+    document.getElementById('ft-solid-form').style.display  = 'none';
+    document.getElementById('ft-stock-liquid').value = p.stock;
+    document.getElementById('ft-unit-liquid').textContent = b ? b.unit : 'L';
+  } else {
+    document.getElementById('ft-liquid-form').style.display = 'none';
+    document.getElementById('ft-solid-form').style.display  = 'block';
+    // Pre-calcular unidades actuales
+    const totalGrs = Math.round(p.stock * 1000);
+    let resto = totalGrs;
+    const u500 = Math.floor(resto/500); resto = resto%500;
+    const u450 = Math.floor(resto/450); resto = resto%450;
+    const u250 = Math.floor(resto/250); resto = Math.round(resto%250);
+    ftFormatoRows = [];
+    if(u500>0) ftFormatoRows.push({gramos:'500', cantidad:String(u500)});
+    if(u450>0) ftFormatoRows.push({gramos:'450', cantidad:String(u450)});
+    if(u250>0) ftFormatoRows.push({gramos:'250', cantidad:String(u250)});
+    if(resto>0) ftFormatoRows.push({gramos:String(resto), cantidad:'1'});
+    if(ftFormatoRows.length===0) ftFormatoRows = [{gramos:'500', cantidad:''}];
+    drawFtFormatoRows();
+  }
   document.getElementById('ft-modal').classList.add('open');
 }
+
+function addFtFormatoRow() {
+  ftFormatoRows.push({gramos:'', cantidad:''});
+  drawFtFormatoRows();
+}
+function delFtFormatoRow(i) {
+  ftFormatoRows.splice(i,1);
+  if(!ftFormatoRows.length) ftFormatoRows=[{gramos:'',cantidad:''}];
+  drawFtFormatoRows();
+}
+function drawFtFormatoRows() {
+  document.getElementById('ft-formato-rows').innerHTML = ftFormatoRows.map((f,i)=>{
+    const g=parseFloat(f.gramos)||0; const q=parseInt(f.cantidad)||0;
+    const totalG=g*q;
+    const disp=totalG>0?(totalG/1000).toFixed(3)+' KG':'—';
+    return `<div style="display:grid;grid-template-columns:1fr 80px 36px;gap:8px;align-items:center;margin-bottom:8px">
+      <div style="position:relative">
+        <input class="form-input" type="number" min="1" step="1" value="${f.gramos}"
+          placeholder="g (ej: 500)" style="padding-right:26px"
+          oninput="ftFormatoRows[${i}].gramos=this.value;updateFtTotal()">
+        <span style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--muted);font-weight:700">g</span>
+      </div>
+      <input class="form-input" type="number" min="0" step="1" value="${f.cantidad}"
+        placeholder="0" style="text-align:center;font-size:16px;font-weight:800;color:var(--accent)"
+        oninput="ftFormatoRows[${i}].cantidad=this.value;updateFtTotal()">
+      <button class="btn btn-danger btn-icon" style="width:36px;height:36px;font-size:14px" onclick="delFtFormatoRow(${i})">✕</button>
+    </div>`;
+  }).join('');
+  updateFtTotal();
+}
+function updateFtTotal() {
+  const totalG = ftFormatoRows.reduce((s,f)=>(parseFloat(f.gramos)||0)*(parseInt(f.cantidad)||0)+s,0);
+  const el = document.getElementById('ft-total-display');
+  if(totalG>0){
+    const units = ftFormatoRows.reduce((s,f)=>s+(parseInt(f.cantidad)||0),0);
+    el.style.display='block';
+    document.getElementById('ft-total-kg').textContent = fmtNum(totalG/1000,3)+' KG ('+units+' envases)';
+  } else { el.style.display='none'; }
+}
+
 function closeFtModal() { document.getElementById('ft-modal').classList.remove('open'); }
+
 function saveFtStock() {
   const id = document.getElementById('ft-edit-id').value;
-  const newStock = parseFloat(document.getElementById('ft-stock').value);
-  if(isNaN(newStock)||newStock<0){toast('Valor inválido','error');return;}
-  DB.finishedGoods[id].stock = r2(newStock);
+  const isLiquid = document.getElementById('ft-is-liquid').value === '1';
+  let newStock = 0;
+
+  if(isLiquid) {
+    newStock = parseFloat(document.getElementById('ft-stock-liquid').value)||0;
+    if(newStock<0){toast('Valor inválido','error');return;}
+  } else {
+    const totalG = ftFormatoRows.reduce((s,f)=>(parseFloat(f.gramos)||0)*(parseInt(f.cantidad)||0)+s,0);
+    newStock = r3(totalG/1000);
+    if(newStock<0){toast('Valor inválido','error');return;}
+  }
+
+  DB.finishedGoods[id].stock = newStock;
   saveDB();
   closeFtModal();
   drawTerminados();
-  toast(`Stock de ${DB.finishedGoods[id].nombre} actualizado ✓`,'success');
+  toast(`Stock de ${DB.finishedGoods[id].nombre} actualizado ✓ (${fmtNum(newStock,3)} ${BATCH[id]?.unit||'KG'})`,'success');
 }
 
-function openIngModal() {
+// ── Sachets ──
+function editSachet(sid) {
+  const p = DB.finishedGoods[sid];
+  if(!p) return;
+  document.getElementById('sachet-modal-title').textContent = p.nombre;
+  document.getElementById('sachet-edit-id').value = sid;
+  document.getElementById('sachet-ml').value = p.mlPorSachet || '';
+  document.getElementById('sachet-stock').value = p.stock || 0;
+  // Info box
+  const fuente = DB.finishedGoods[p.fuenteId];
+  const fuenteL = fuente ? fuente.stock : 0;
+  const ml = p.mlPorSachet;
+  const txt = ml
+    ? `Con ${fmtNum(fuenteL,2)} L de ${fuente?.nombre||''} → se pueden envasar ~${Math.floor(fuenteL*1000/ml)} sachets de ${ml}ml`
+    : `Configura los ml/sachet para ver cuántos sachets puedes envasar`;
+  document.getElementById('sachet-info-text').textContent = txt;
+  document.getElementById('sachet-modal').classList.add('open');
+}
+function closeSachetModal() { document.getElementById('sachet-modal').classList.remove('open'); }
+function saveSachet() {
+  const sid = document.getElementById('sachet-edit-id').value;
+  const ml  = parseInt(document.getElementById('sachet-ml').value)||null;
+  const stock = parseInt(document.getElementById('sachet-stock').value)||0;
+  if(!DB.finishedGoods[sid]) return;
+  DB.finishedGoods[sid].mlPorSachet = ml;
+  DB.finishedGoods[sid].stock = stock;
+  if(BATCH[sid]) BATCH[sid].mlPorSachet = ml;
+  saveDB();
+  closeSachetModal();
+  drawTerminados();
+  toast(`${DB.finishedGoods[sid].nombre} guardado ✓`,'success');
+}
   document.getElementById('ing-edit-key').value='';
   document.getElementById('ing-modal-title').textContent='Nuevo Insumo';
   ['im-name','im-stock','im-min','im-price'].forEach(id=>document.getElementById(id).value=id==='im-name'?'':'0');
@@ -2013,6 +2259,7 @@ function doCalc() {
 // close modal on overlay click
 document.getElementById('ing-modal').addEventListener('click',function(e){if(e.target===this)closeIngModal()});
 document.getElementById('ft-modal').addEventListener('click',function(e){if(e.target===this)closeFtModal()});
+document.getElementById('sachet-modal').addEventListener('click',function(e){if(e.target===this)closeSachetModal()});
 
 // ═══════ INIT ═══════
 initDB(); // Firebase listener carga datos y llama renderDash() cuando están listos
