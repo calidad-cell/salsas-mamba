@@ -1876,7 +1876,8 @@ function drawTerminados() {
   }).join('');
   document.getElementById('terminados-list').innerHTML += sachetHTML;
 
-  // Valor total discreto((s,p)=>{
+  // Valor total discreto
+  const valorTotal = fg.reduce((s,p)=>{
     const b=BATCH[p.id]; const r=DB.recipes[p.id]; if(!r||!b)return s;
     const cu=r.ingredientes.reduce((ss,ing)=>{
       const fu=ing.fu||(ing.cantidad/b.output); const k=ing.nombre.toLowerCase().trim();
