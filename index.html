@@ -2023,6 +2023,8 @@ function saveSachet() {
   drawTerminados();
   toast(`${DB.finishedGoods[sid].nombre} guardado ✓`,'success');
 }
+
+function openIngModal() {
   document.getElementById('ing-edit-key').value='';
   document.getElementById('ing-modal-title').textContent='Nuevo Insumo';
   ['im-name','im-stock','im-min','im-price'].forEach(id=>document.getElementById(id).value=id==='im-name'?'':'0');
