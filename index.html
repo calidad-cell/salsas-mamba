@@ -745,16 +745,25 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 <div class="modal-overlay" id="ft-modal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title" id="ft-modal-title">Editar Stock</div>
+    <div class="modal-title" id="ft-modal-title">Actualizar Stock</div>
     <input type="hidden" id="ft-edit-id">
     <input type="hidden" id="ft-is-liquid">
+
+    <!-- Aviso REEMPLAZA -->
+    <div style="background:rgba(26,127,212,0.08);border:1px solid rgba(26,127,212,0.2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:center">
+      <div style="font-size:20px">📋</div>
+      <div>
+        <div style="font-size:13px;font-weight:800;color:var(--accent)">Ingresa el stock ACTUAL real</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Este valor <b>reemplaza</b> el stock existente — haz un conteo físico primero</div>
+      </div>
+    </div>
 
     <!-- Vista LÍQUIDAS (Vinagre / Agridulce) -->
     <div id="ft-liquid-form">
       <div class="form-group">
-        <label class="form-label">Stock Actual</label>
+        <label class="form-label">Stock Real Contado</label>
         <div style="display:flex;gap:10px;align-items:center">
-          <input class="form-input" type="number" id="ft-stock-liquid" min="0" step="0.01" style="flex:1">
+          <input class="form-input" type="number" id="ft-stock-liquid" min="0" step="0.01" style="flex:1;font-size:20px;font-weight:800;text-align:center">
           <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;font-size:15px;font-weight:800;color:var(--muted2)" id="ft-unit-liquid">L</div>
         </div>
       </div>
@@ -762,35 +771,27 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 
     <!-- Vista SÓLIDAS (por unidades) -->
     <div id="ft-solid-form" style="display:none">
-      <div style="font-size:12px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Ingresa unidades por formato</div>
-
-      <!-- Encabezado -->
+      <div style="background:rgba(245,200,66,0.08);border:1px solid rgba(245,200,66,0.25);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:12px;font-size:12px;color:#7a6000;font-weight:600">
+        💡 Cuenta los envases físicamente e ingresa la cantidad por formato
+      </div>
       <div style="display:grid;grid-template-columns:1fr 80px 36px;gap:8px;padding:0 4px;margin-bottom:6px">
         <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Formato</div>
-        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;text-align:center">Unidades</div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;text-align:center">Cantidad</div>
         <div></div>
       </div>
-
-      <!-- Filas de formato -->
       <div id="ft-formato-rows"></div>
       <button class="add-dashed" onclick="addFtFormatoRow()" style="margin-bottom:12px">+ Agregar formato</button>
-
-      <!-- Total calculado -->
       <div id="ft-total-display" style="display:none;background:rgba(26,127,212,0.07);border:1px solid rgba(26,127,212,0.15);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:13px;font-weight:700;color:var(--muted2)">Total KG calculado</div>
+          <div style="font-size:13px;font-weight:700;color:var(--muted2)">Total a registrar</div>
           <div style="font-size:18px;font-weight:900;color:var(--accent)" id="ft-total-kg">0,000 KG</div>
         </div>
       </div>
     </div>
 
-    <div style="background:rgba(14,165,160,0.07);border:1px solid rgba(14,165,160,0.2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px">
-      <div style="font-size:12px;color:var(--teal);font-weight:700">⚠ Ajuste manual de stock</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:3px">Solo para corregir diferencias. Los movimientos normales van en la pestaña Movimientos.</div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
       <button class="btn btn-ghost btn-full" onclick="closeFtModal()">Cancelar</button>
-      <button class="btn btn-primary btn-full" onclick="saveFtStock()">💾 Guardar</button>
+      <button class="btn btn-primary btn-full" onclick="saveFtStock()">✓ Guardar Stock</button>
     </div>
   </div>
 </div>
@@ -925,15 +926,17 @@ function initDB() {
       // Migración: agregar sachets si no existen
       if (!DB.finishedGoods['S001']) DB.finishedGoods['S001'] = {...SACHETS['S001']};
       if (!DB.finishedGoods['S002']) DB.finishedGoods['S002'] = {...SACHETS['S002']};
-      // Migración: si ml era null (versión antigua), setear 40ml
-      ['S001','S002'].forEach(sid => {
-        if(DB.finishedGoods[sid] && !DB.finishedGoods[sid].mlPorSachet) {
-          DB.finishedGoods[sid].mlPorSachet = 40;
-        }
-        if(DB.finishedGoods[sid]) {
-          BATCH[sid].mlPorSachet = DB.finishedGoods[sid].mlPorSachet;
-        }
-      });
+      // Migración: corregir nombre de S001 (Vinagre → Soya) y setear 40ml si era null
+      if(DB.finishedGoods['S001']) {
+        DB.finishedGoods['S001'].nombre = 'Sachet Soya';
+        if(!DB.finishedGoods['S001'].mlPorSachet) DB.finishedGoods['S001'].mlPorSachet = 40;
+        BATCH['S001'].mlPorSachet = 40;
+      }
+      if(DB.finishedGoods['S002']) {
+        DB.finishedGoods['S002'].nombre = 'Sachet Agridulce';
+        if(!DB.finishedGoods['S002'].mlPorSachet) DB.finishedGoods['S002'].mlPorSachet = 40;
+        BATCH['S002'].mlPorSachet = 40;
+      }
       if (!DB.recipes || Object.keys(DB.recipes).length === 0) {
         DB.recipes = {};
         BASE_RECIPES.forEach(r => { DB.recipes[r.id] = JSON.parse(JSON.stringify(r)); });
@@ -999,7 +1002,7 @@ const BATCH = {
 const RECIPE_ICONS = {'2001':'🍶','2002':'🍯','2003':'🐟','2004':'🥗','2005':'🌶️','2006':'🍖','2007':'🍋','2008':'🫙','2009':'🥭','2010':'🍊','S001':'🧃','S002':'🧃'};
 // Sachets: stock en unidades, descuentan del producto terminado fuente en litros
 const SACHETS = {
-  'S001': {id:'S001', nombre:'Sachet Vinagre',    fuenteId:'2001', mlPorSachet:40, stock:0, unit:'UNIDAD'},
+  'S001': {id:'S001', nombre:'Sachet Soya',      fuenteId:'2001', mlPorSachet:40, stock:0, unit:'UNIDAD'},
   'S002': {id:'S002', nombre:'Sachet Agridulce',  fuenteId:'2002', mlPorSachet:40, stock:0, unit:'UNIDAD'},
 };
 
@@ -1912,18 +1915,8 @@ function editTerminado(id) {
   } else {
     document.getElementById('ft-liquid-form').style.display = 'none';
     document.getElementById('ft-solid-form').style.display  = 'block';
-    // Pre-calcular unidades actuales
-    const totalGrs = Math.round(p.stock * 1000);
-    let resto = totalGrs;
-    const u500 = Math.floor(resto/500); resto = resto%500;
-    const u450 = Math.floor(resto/450); resto = resto%450;
-    const u250 = Math.floor(resto/250); resto = Math.round(resto%250);
-    ftFormatoRows = [];
-    if(u500>0) ftFormatoRows.push({gramos:'500', cantidad:String(u500)});
-    if(u450>0) ftFormatoRows.push({gramos:'450', cantidad:String(u450)});
-    if(u250>0) ftFormatoRows.push({gramos:'250', cantidad:String(u250)});
-    if(resto>0) ftFormatoRows.push({gramos:String(resto), cantidad:'1'});
-    if(ftFormatoRows.length===0) ftFormatoRows = [{gramos:'500', cantidad:''}];
+    // Empezar con una fila vacía para que el usuario cuente y llene desde cero
+    ftFormatoRows = [{gramos:'500', cantidad:''}, {gramos:'450', cantidad:''}, {gramos:'250', cantidad:''}];
     drawFtFormatoRows();
   }
   document.getElementById('ft-modal').classList.add('open');
