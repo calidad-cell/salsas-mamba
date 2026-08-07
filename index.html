@@ -409,6 +409,33 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 .rot-bar-cnt{font-size:9px;color:var(--muted);font-weight:700}
 .rot-bar{background:linear-gradient(180deg,var(--sky),var(--accent));border-radius:4px 4px 0 0;width:100%}
 .rot-bar-lbl{font-size:8px;color:var(--muted);writing-mode:vertical-rl;transform:rotate(180deg);height:36px;overflow:hidden;font-weight:700}
+
+/* periodo buttons */
+.periodo-btn{padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--muted2);font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;transition:all .15s}
+.periodo-btn:active{transform:scale(0.95)}
+.active-periodo{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* critical stock cards */
+.crit-card{
+  display:flex;align-items:center;gap:12px;padding:11px 14px;
+  border-radius:var(--radius-sm);margin-bottom:8px;border-left:4px solid var(--danger);
+}
+.crit-card.nivel-0{background:#fff0f0;border-color:var(--danger)}
+.crit-card.nivel-1{background:#fff7f0;border-color:var(--orange)}
+.crit-card.nivel-2{background:#fffbe0;border-color:#c8a000}
+.crit-icon{font-size:22px;flex-shrink:0}
+.crit-name{font-size:14px;font-weight:800;flex:1}
+.crit-detail{font-size:11px;color:var(--muted);margin-top:2px}
+.crit-stock{text-align:right}
+.crit-stock-val{font-size:16px;font-weight:900}
+.crit-stock-min{font-size:10px;color:var(--muted);margin-top:1px}
+
+/* salidas tabla */
+.salidas-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-sm);margin-bottom:6px;background:var(--surface2);border:1px solid var(--border)}
+.salidas-icon{font-size:18px;flex-shrink:0}
+.salidas-name{font-size:13px;font-weight:700;flex:1}
+.salidas-qty{font-size:14px;font-weight:800;color:var(--accent);text-align:right}
+.salidas-pct{font-size:10px;color:var(--muted);margin-top:1px;text-align:right}
 </style>
 </head>
 <body>
@@ -446,31 +473,47 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
     <div class="screen-title">Dashboard</div>
     <div class="screen-sub">Resumen del área de salsas</div>
 
+    <!-- KPIs -->
     <div class="kpi-grid" id="kpi-grid"></div>
 
-    <!-- Productos terminados en stock -->
-
+    <!-- Stock Crítico — 5 tarjetas -->
     <div class="card">
-      <div class="card-title">Nivel de Stock — Insumos</div>
-      <div id="stock-bars"></div>
+      <div class="card-title">🚨 Stock Crítico de Insumos</div>
+      <div id="dash-criticos"></div>
     </div>
 
+    <!-- Gráfico torta salidas + análisis -->
     <div class="card">
-      <div class="card-title">⚠ Alertas de Insumos Críticos</div>
-      <div id="critical-list"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="card-title" style="margin:0">📊 Análisis de Salidas</div>
+        <div style="display:flex;gap:6px">
+          <button id="btn-periodo-hoy"    class="periodo-btn active-periodo" onclick="setPeriodo('hoy')">Hoy</button>
+          <button id="btn-periodo-semana" class="periodo-btn" onclick="setPeriodo('semana')">7 días</button>
+          <button id="btn-periodo-mes"    class="periodo-btn" onclick="setPeriodo('mes')">30 días</button>
+        </div>
+      </div>
+      <!-- Torta + leyenda -->
+      <div style="display:flex;gap:16px;align-items:center;margin-bottom:14px">
+        <div style="flex-shrink:0"><canvas id="dash-torta" width="160" height="160"></canvas></div>
+        <div id="dash-torta-leyenda" style="flex:1;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+      <!-- Tabla de salidas -->
+      <div id="dash-salidas-tabla"></div>
     </div>
 
+    <!-- Salidas del día -->
     <div class="card">
       <div class="card-title">🛒 Salidas del Día</div>
       <div id="dash-ventas-hoy"></div>
     </div>
 
+    <!-- Actividad reciente -->
     <div class="card">
       <div class="card-title">Actividad Reciente</div>
       <div id="dash-history"></div>
     </div>
 
-    <!-- Valor inventario discreto al fondo -->
+    <!-- Valor inventario discreto -->
     <div style="text-align:center;padding:10px;font-size:11px;color:var(--muted)">
       Valor total en insumos: <span id="dash-valor-total" style="font-weight:700"></span>
     </div>
@@ -1175,44 +1218,60 @@ function ingStatus(i) {
 }
 
 // ═══════ DASHBOARD ═══════
+let dashPeriodo = 'hoy';
+function setPeriodo(p) {
+  dashPeriodo = p;
+  document.querySelectorAll('.periodo-btn').forEach(b=>b.classList.remove('active-periodo'));
+  document.getElementById('btn-periodo-'+p).classList.add('active-periodo');
+  renderSalidasAnalisis();
+}
+
 function renderDash() {
   const ings = Object.values(DB.ingredients);
-  const crit = ings.filter(i=>i.stock<=i.minStock);
+  const crit = ings.filter(i=>i.stock<=i.minStock).sort((a,b)=>a.stock-b.stock);
   const val = ings.reduce((s,i)=>s+(i.stock*i.precio),0);
   const today = DB.history.filter(h=>new Date(h.date).toDateString()===new Date().toDateString()).length;
   const prodHoy = DB.history.filter(h=>h.type==='produccion'&&new Date(h.date).toDateString()===new Date().toDateString()).length;
 
-  // KPIs — sin valor monetario visible
+  // KPIs
   document.getElementById('kpi-grid').innerHTML = `
     <div class="kpi blue"><div class="kpi-icon">🧂</div><div class="kpi-label">Insumos</div><div class="kpi-value">${ings.length}</div><div class="kpi-sub">ingredientes</div></div>
     <div class="kpi ${crit.length>0?'sky':'teal'}"><div class="kpi-icon">⚠️</div><div class="kpi-label">Críticos</div><div class="kpi-value">${crit.length}</div><div class="kpi-sub">${crit.length>0?'por reponer':'todo OK'}</div></div>
-    <div class="kpi green"><div class="kpi-icon">⚙️</div><div class="kpi-label">Prod. Hoy</div><div class="kpi-value">${prodHoy}</div><div class="kpi-sub">lotes producidos</div></div>
+    <div class="kpi green"><div class="kpi-icon">⚙️</div><div class="kpi-label">Prod. Hoy</div><div class="kpi-value">${prodHoy}</div><div class="kpi-sub">lotes</div></div>
     <div class="kpi sky"><div class="kpi-icon">📋</div><div class="kpi-label">Mov. Hoy</div><div class="kpi-value">${today}</div><div class="kpi-sub">registros</div></div>
   `;
+  document.getElementById('dash-valor-total').textContent = '$'+fmtNum(val,0)+' CLP';
 
-  // Valor total discreto
-  document.getElementById('dash-valor-total').textContent = '$'+val.toLocaleString('es-CL',{maximumFractionDigits:0})+' CLP';
+  // ── STOCK CRÍTICO top 5 ──
+  const top5 = crit.slice(0,5);
+  if(top5.length===0) {
+    document.getElementById('dash-criticos').innerHTML =
+      '<div style="color:var(--green);font-size:14px;font-weight:700;padding:8px 0;text-align:center">✓ Todos los insumos tienen stock suficiente</div>';
+  } else {
+    document.getElementById('dash-criticos').innerHTML = top5.map(i=>{
+      const pct = i.minStock>0?Math.round((i.stock/i.minStock)*100):0;
+      const nivel = i.stock<=0?0:pct<50?1:2;
+      const icons = ['🔴','🟠','🟡'];
+      const colors = ['var(--danger)','var(--orange)','#c8a000'];
+      const labels = ['SIN STOCK','MUY BAJO','BAJO'];
+      return `<div class="crit-card nivel-${nivel}">
+        <div class="crit-icon">${icons[nivel]}</div>
+        <div style="flex:1">
+          <div class="crit-name">${cap(i.nombre)}</div>
+          <div class="crit-detail">Mínimo: ${fmtNum(i.minStock,2)} ${i.unidad}</div>
+        </div>
+        <div class="crit-stock">
+          <div class="crit-stock-val" style="color:${colors[nivel]}">${fmtNum(i.stock,3)} ${i.unidad}</div>
+          <span class="badge badge-crit" style="font-size:10px">${labels[nivel]}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
 
-  // Stock bars insumos
-  document.getElementById('stock-bars').innerHTML = ings.slice(0,10).map(i=>{
-    const pct = i.minStock>0 ? Math.min(100,Math.round((i.stock/(i.minStock*5))*100)) : 50;
-    const cls = pct<20?'crit':pct<50?'low':'ok';
-    return `<div class="sbar-item">
-      <div class="sbar-top"><span class="sbar-name">${cap(i.nombre)}</span><span class="sbar-pct">${pct}%</span></div>
-      <div class="sbar-track"><div class="sbar-fill ${cls}" style="width:${pct}%"></div></div>
-    </div>`;
-  }).join('');
+  // ── ANÁLISIS DE SALIDAS ──
+  renderSalidasAnalisis();
 
-  // Critical
-  document.getElementById('critical-list').innerHTML = crit.length===0
-    ? '<div style="color:var(--green);font-size:14px;font-weight:700;padding:8px 0">✓ Todos los insumos tienen stock suficiente</div>'
-    : crit.map(i=>`<div class="alert-item">
-        <div class="alert-icon">⚠️</div>
-        <div><div class="alert-name">${cap(i.nombre)}</div><div class="alert-detail">Mínimo: ${i.minStock} ${i.unidad}</div></div>
-        <div class="alert-stock">${i.stock} ${i.unidad}</div>
-      </div>`).join('');
-
-  // Ventas del día
+  // ── SALIDAS DEL DÍA ──
   const hoy = new Date().toDateString();
   const ventasHoy = DB.history.filter(h=>h.type==='venta'&&new Date(h.date).toDateString()===hoy);
   const mermasHoy = DB.history.filter(h=>h.type==='merma'&&new Date(h.date).toDateString()===hoy);
@@ -1234,12 +1293,12 @@ function renderDash() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
         <div style="background:rgba(24,184,112,0.08);border:1px solid rgba(24,184,112,0.2);border-radius:10px;padding:12px;text-align:center">
           <div style="font-size:10px;color:var(--green);font-weight:800;text-transform:uppercase">Ventas hoy</div>
-          <div style="font-size:22px;font-weight:900;color:var(--green)">${totalVentaKg.toFixed(2)}</div>
+          <div style="font-size:22px;font-weight:900;color:var(--green)">${fmtNum(totalVentaKg,2)}</div>
           <div style="font-size:11px;color:var(--muted)">${ventasHoy.length} registro(s)</div>
         </div>
         <div style="background:rgba(224,80,80,0.07);border:1px solid rgba(224,80,80,0.15);border-radius:10px;padding:12px;text-align:center">
           <div style="font-size:10px;color:var(--danger);font-weight:800;text-transform:uppercase">Mermas hoy</div>
-          <div style="font-size:22px;font-weight:900;color:var(--danger)">${totalMermaKg.toFixed(2)}</div>
+          <div style="font-size:22px;font-weight:900;color:var(--danger)">${fmtNum(totalMermaKg,2)}</div>
           <div style="font-size:11px;color:var(--muted)">${mermasHoy.length} registro(s)</div>
         </div>
       </div>
@@ -1247,8 +1306,8 @@ function renderDash() {
         <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:10px;margin-bottom:8px;border:1px solid var(--border)">
           <div style="font-size:22px">${rc.icon}</div>
           <div style="flex:1"><div style="font-size:14px;font-weight:700">${cap(rc.nombre)}</div></div>
-          ${rc.ventas>0?`<div style="text-align:center;padding:4px 10px;background:rgba(24,184,112,0.1);border-radius:7px"><div style="font-size:11px;color:var(--green);font-weight:700">Venta</div><div style="font-size:14px;font-weight:800;color:var(--green)">${rc.ventas.toFixed(3)} ${rc.unit}</div></div>`:''}
-          ${rc.mermas>0?`<div style="text-align:center;padding:4px 10px;background:rgba(224,80,80,0.08);border-radius:7px"><div style="font-size:11px;color:var(--danger);font-weight:700">Merma</div><div style="font-size:14px;font-weight:800;color:var(--danger)">${rc.mermas.toFixed(3)} ${rc.unit}</div></div>`:''}
+          ${rc.ventas>0?`<div style="text-align:center;padding:4px 10px;background:rgba(24,184,112,0.1);border-radius:7px"><div style="font-size:11px;color:var(--green);font-weight:700">Venta</div><div style="font-size:14px;font-weight:800;color:var(--green)">${fmtNum(rc.ventas,3)} ${rc.unit}</div></div>`:''}
+          ${rc.mermas>0?`<div style="text-align:center;padding:4px 10px;background:rgba(224,80,80,0.08);border-radius:7px"><div style="font-size:11px;color:var(--danger);font-weight:700">Merma</div><div style="font-size:14px;font-weight:800;color:var(--danger)">${fmtNum(rc.mermas,3)} ${rc.unit}</div></div>`:''}
         </div>`).join('')}`;
   }
 
@@ -1257,6 +1316,113 @@ function renderDash() {
   document.getElementById('dash-history').innerHTML = recent.length===0
     ? '<div style="color:var(--muted);font-size:14px;text-align:center;padding:12px">Sin movimientos aún</div>'
     : recent.map(h=>histRow(h)).join('');
+}
+
+function renderSalidasAnalisis() {
+  const ahora = new Date();
+  const dias = dashPeriodo==='hoy'?1:dashPeriodo==='semana'?7:30;
+  const desde = new Date(ahora.getTime() - dias*24*60*60*1000);
+  const salidas = DB.history.filter(h=>(h.type==='venta'||h.type==='merma')&&new Date(h.date)>=desde);
+
+  const byProd={};
+  salidas.forEach(h=>{
+    const key=h.items[0]?.nombre||'?';
+    const qty=h.items[0]?.qty||0;
+    if(!byProd[key]) byProd[key]={nombre:key,icon:RECIPE_ICONS[h.recipeId]||'🍶',ventas:0,mermas:0,unit:h.items[0]?.unidad||'KG'};
+    if(h.type==='venta') byProd[key].ventas+=qty; else byProd[key].mermas+=qty;
+  });
+  const prods = Object.values(byProd).sort((a,b)=>(b.ventas+b.mermas)-(a.ventas+a.mermas));
+  const totalVentas = prods.reduce((s,p)=>s+p.ventas,0);
+  const totalMermas = prods.reduce((s,p)=>s+p.mermas,0);
+  const totalGeneral = totalVentas+totalMermas;
+
+  const PIE_COLORS=['#1a7fd4','#0ea5a0','#18b870','#5b8dee','#f07030','#38bdf8','#a855f7','#e05050','#f5c842','#0f4c8a'];
+
+  // Canvas torta
+  const canvas = document.getElementById('dash-torta');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,160,160);
+
+  if(prods.length===0||totalGeneral===0) {
+    ctx.beginPath(); ctx.arc(80,80,72,0,Math.PI*2);
+    ctx.fillStyle='#eef5ff'; ctx.fill();
+    ctx.fillStyle='#6e8daa'; ctx.font='bold 11px Arial'; ctx.textAlign='center';
+    ctx.fillText('Sin datos',80,84);
+  } else {
+    let startAngle = -Math.PI/2;
+    prods.forEach((p,i)=>{
+      const total=p.ventas+p.mermas;
+      const slice=(total/totalGeneral)*Math.PI*2;
+      ctx.beginPath(); ctx.moveTo(80,80);
+      ctx.arc(80,80,72,startAngle,startAngle+slice);
+      ctx.closePath();
+      ctx.fillStyle=PIE_COLORS[i%PIE_COLORS.length]; ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+      startAngle+=slice;
+    });
+    ctx.beginPath(); ctx.arc(80,80,38,0,Math.PI*2);
+    ctx.fillStyle='#fff'; ctx.fill();
+    ctx.fillStyle='#1a2b42'; ctx.font='bold 13px Arial'; ctx.textAlign='center';
+    ctx.fillText(fmtNum(totalGeneral,1),80,77);
+    ctx.font='10px Arial'; ctx.fillStyle='#6e8daa';
+    ctx.fillText('total',80,91);
+  }
+
+  // Leyenda
+  document.getElementById('dash-torta-leyenda').innerHTML = prods.slice(0,6).map((p,i)=>{
+    const pct=totalGeneral>0?Math.round(((p.ventas+p.mermas)/totalGeneral)*100):0;
+    return `<div style="display:flex;align-items:center;gap:8px">
+      <div style="width:12px;height:12px;border-radius:3px;flex-shrink:0;background:${PIE_COLORS[i%PIE_COLORS.length]}"></div>
+      <div style="flex:1;font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cap(p.nombre)}</div>
+      <div style="font-size:12px;font-weight:800;color:var(--accent)">${pct}%</div>
+    </div>`;
+  }).join('');
+
+  // Tabla salidas
+  if(prods.length===0) {
+    document.getElementById('dash-salidas-tabla').innerHTML =
+      '<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px">Sin salidas en este período</div>';
+    return;
+  }
+  const labelPeriodo=dashPeriodo==='hoy'?'hoy':dashPeriodo==='semana'?'últimos 7 días':'últimos 30 días';
+  let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+    <div style="background:rgba(24,184,112,0.08);border:1px solid rgba(24,184,112,0.15);border-radius:10px;padding:10px;text-align:center">
+      <div style="font-size:10px;color:var(--green);font-weight:800;text-transform:uppercase">Total Ventas</div>
+      <div style="font-size:20px;font-weight:900;color:var(--green)">${fmtNum(totalVentas,2)}</div>
+      <div style="font-size:10px;color:var(--muted)">${labelPeriodo}</div>
+    </div>
+    <div style="background:rgba(224,80,80,0.07);border:1px solid rgba(224,80,80,0.12);border-radius:10px;padding:10px;text-align:center">
+      <div style="font-size:10px;color:var(--danger);font-weight:800;text-transform:uppercase">Total Mermas</div>
+      <div style="font-size:20px;font-weight:900;color:var(--danger)">${fmtNum(totalMermas,2)}</div>
+      <div style="font-size:10px;color:var(--muted)">${labelPeriodo}</div>
+    </div>
+  </div>`;
+  html+=prods.map((p,i)=>{
+    const total=p.ventas+p.mermas;
+    const pct=totalGeneral>0?Math.round((total/totalGeneral)*100):0;
+    const mermaPct=total>0?Math.round((p.mermas/total)*100):0;
+    return `<div class="salidas-row">
+      <div style="width:10px;height:10px;border-radius:2px;flex-shrink:0;background:${PIE_COLORS[i%PIE_COLORS.length]}"></div>
+      <div class="salidas-icon">${p.icon}</div>
+      <div style="flex:1">
+        <div class="salidas-name">${cap(p.nombre)}</div>
+        <div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap">
+          <span style="font-size:10px;color:var(--green);font-weight:700">▲ ${fmtNum(p.ventas,2)} ${p.unit}</span>
+          ${p.mermas>0?`<span style="font-size:10px;color:var(--danger);font-weight:700">▼ ${fmtNum(p.mermas,2)} ${p.unit}</span>`:''}
+          ${mermaPct>0?`<span style="font-size:10px;color:var(--muted)">merma ${mermaPct}%</span>`:''}
+        </div>
+        <div style="height:4px;background:var(--bg);border-radius:99px;margin-top:5px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${PIE_COLORS[i%PIE_COLORS.length]};border-radius:99px;transition:width .5s"></div>
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="salidas-qty">${fmtNum(total,2)}</div>
+        <div class="salidas-pct">${pct}% del total</div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('dash-salidas-tabla').innerHTML=html;
 }
 
 function histRow(h) {
