@@ -585,8 +585,22 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
           </div>
         </div>
 
-        <!-- Descuenta ingredientes -->
-        <div style="margin:10px 0;padding:10px 12px;background:rgba(14,165,160,0.07);border:1px solid rgba(14,165,160,0.2);border-radius:var(--radius-sm)">
+        <!-- Formulario sachets (aparece al seleccionar S001/S002) -->
+        <div id="prod-sachet-form" style="display:none">
+          <div style="background:rgba(26,127,212,0.07);border:1px solid rgba(26,127,212,0.2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px">
+            <div style="font-size:12px;font-weight:800;color:var(--accent)">🧃 Envasado de Sachets</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px">Cada sachet descuenta <b>40 ml</b> del stock de litros del producto fuente</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cantidad de Sachets a Producir</label>
+            <div style="display:flex;gap:10px;align-items:center">
+              <input class="form-input" type="number" id="prod-sachet-qty" min="1" step="1"
+                placeholder="ej: 100" style="flex:1;font-size:20px;font-weight:800;text-align:center"
+                oninput="updateProdSachetPreview()">
+              <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:14px;font-weight:800;color:var(--muted2)">uds</div>
+            </div>
+          </div>
+        </div>
           <div style="display:flex;align-items:center;gap:8px">
             <input type="checkbox" id="prod-descontar" style="width:18px;height:18px;accent-color:var(--teal)" checked>
             <label for="prod-descontar" style="font-size:13px;font-weight:700;color:var(--teal)">Descontar ingredientes del stock automáticamente</label>
@@ -1463,9 +1477,22 @@ let prodFormatoRows = [{gramos:'500', cantidad:''}];
 function drawProdRecPanel() {
   const sel = document.getElementById('prod-rec-sel');
   if(sel.options.length <= 1) {
+    // Salsas normales
     Object.values(DB.recipes).forEach(r => {
       const o = document.createElement('option');
       o.value = r.id; o.textContent = `${RECIPE_ICONS[r.id]||'🍶'} ${r.nombre}`;
+      sel.appendChild(o);
+    });
+    // Separador
+    const sep = document.createElement('option');
+    sep.disabled = true; sep.textContent = '── Sachets ──';
+    sel.appendChild(sep);
+    // Sachets
+    ['S001','S002'].forEach(sid => {
+      const p = DB.finishedGoods[sid];
+      if(!p) return;
+      const o = document.createElement('option');
+      o.value = sid; o.textContent = `🧃 ${p.nombre} (40ml)`;
       sel.appendChild(o);
     });
   }
@@ -1474,10 +1501,63 @@ function drawProdRecPanel() {
 
 function onProdRecChange() {
   const id = document.getElementById('prod-rec-sel').value;
-  const b = BATCH[id];
-  if(b) document.getElementById('prod-litros-label').textContent = `Cantidad producida (${b.unit})`;
-  drawProdFormatoRows();
-  updateProdRecPreview();
+  const isSachet = id && id.startsWith('S');
+
+  if(isSachet) {
+    // Ocultar modo cantidad normal, mostrar solo unidades de sachet
+    document.getElementById('prod-unidades-form').style.display = 'none';
+    document.getElementById('prod-litros-form').style.display   = 'none';
+    document.getElementById('prod-modo-unidades').style.display = 'none';
+    document.getElementById('prod-modo-litros').style.display   = 'none';
+    // Mostrar formulario de sachets
+    document.getElementById('prod-sachet-form').style.display = 'block';
+    document.getElementById('prod-descontar').checked = true;
+    updateProdSachetPreview();
+  } else {
+    document.getElementById('prod-sachet-form').style.display = 'none';
+    document.getElementById('prod-modo-unidades').style.display = '';
+    document.getElementById('prod-modo-litros').style.display   = '';
+    const b = BATCH[id];
+    if(b) document.getElementById('prod-litros-label').textContent = `Cantidad producida (${b.unit})`;
+    drawProdFormatoRows();
+    updateProdRecPreview();
+  }
+}
+
+function updateProdSachetPreview() {
+  const id = document.getElementById('prod-rec-sel').value;
+  const unidades = parseInt(document.getElementById('prod-sachet-qty').value)||0;
+  const p = DB.finishedGoods[id];
+  if(!p||!id.startsWith('S')) return;
+
+  const ml = p.mlPorSachet||40;
+  const litrosNecesarios = r3((unidades * ml) / 1000);
+  const fuente = DB.finishedGoods[p.fuenteId];
+  const disponible = fuente ? fuente.stock : 0;
+  const ok = disponible >= litrosNecesarios;
+
+  const prev = document.getElementById('prod-rec-preview');
+  const list = document.getElementById('prod-rec-ing-list');
+
+  if(unidades <= 0) { prev.style.display='none'; return; }
+
+  list.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;
+      background:${ok?'#f0fff8':'#fff5f5'};border-radius:8px;border:1px solid ${ok?'rgba(24,184,112,0.2)':'rgba(224,80,80,0.2)'}">
+      <div>
+        <div style="font-size:13px;font-weight:700">${fuente?.nombre||'Fuente'}</div>
+        <div style="font-size:11px;color:var(--muted)">Disponible: ${fmtNum(disponible,2)} L</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:15px;font-weight:800;color:${ok?'var(--green)':'var(--danger)'}">−${fmtNum(litrosNecesarios,3)} L</div>
+        <div style="font-size:10px;color:${ok?'var(--green)':'var(--danger)'};font-weight:700">${ok?'✓ Stock suficiente':'⚠ Stock insuficiente'}</div>
+      </div>
+    </div>
+    <div style="margin-top:8px;padding:8px 12px;background:rgba(26,127,212,0.07);border-radius:8px;display:flex;justify-content:space-between">
+      <div style="font-size:12px;color:var(--muted2);font-weight:700">Sachets a producir</div>
+      <div style="font-size:16px;font-weight:900;color:var(--accent)">${unidades} uds × ${ml}ml</div>
+    </div>`;
+  prev.style.display = 'block';
 }
 
 function setProdModo(modo) {
@@ -1554,7 +1634,39 @@ function updateProdRecPreview() {
 
 function submitProduccion() {
   const id = document.getElementById('prod-rec-sel').value;
-  if(!id){toast('Selecciona una salsa','error');return;}
+  if(!id){toast('Selecciona una salsa o sachet','error');return;}
+  const nota = document.getElementById('prod-rec-nota').value.trim();
+
+  // ── CASO SACHET ──────────────────────────────────────
+  if(id.startsWith('S')) {
+    const p = DB.finishedGoods[id];
+    if(!p){toast('Sachet no encontrado','error');return;}
+    const unidades = parseInt(document.getElementById('prod-sachet-qty').value)||0;
+    if(unidades<=0){toast('Ingresa cantidad de sachets mayor a 0','error');return;}
+    const ml = p.mlPorSachet||40;
+    const litrosNecesarios = r3((unidades*ml)/1000);
+    const fuente = DB.finishedGoods[p.fuenteId];
+    if(!fuente){toast('Producto fuente no encontrado','error');return;}
+    if(fuente.stock < litrosNecesarios){
+      toast(`Stock insuficiente de ${fuente.nombre}: hay ${fmtNum(fuente.stock,2)} L, necesitas ${fmtNum(litrosNecesarios,3)} L`,'error');
+      return;
+    }
+    // Descontar litros de la fuente
+    fuente.stock = r3(fuente.stock - litrosNecesarios);
+    // Sumar unidades al stock de sachet
+    p.stock = (p.stock||0) + unidades;
+    DB.history.push({
+      id:Date.now(), type:'produccion', subtype:'sachet', recipeId:id,
+      items:[{nombre:p.nombre, qty:unidades, unidad:'UNIDAD'}],
+      date:new Date().toISOString(),
+      note:`Producción ${p.nombre} — ${unidades} sachets × ${ml}ml (−${fmtNum(litrosNecesarios,3)} L de ${fuente.nombre})${nota?' — '+nota:''}`
+    });
+    saveDB(); clearProdRec(); drawHistory();
+    toast(`✓ ${unidades} ${p.nombre} producidos — se descontaron ${fmtNum(litrosNecesarios,3)} L de ${fuente.nombre}`,'success');
+    return;
+  }
+
+  // ── CASO SALSA NORMAL ────────────────────────────────
   const descontar = document.getElementById('prod-descontar').checked;
   let total=0; let detalle='';
   if(prodModo==='unidades'){
@@ -1566,9 +1678,8 @@ function submitProduccion() {
     detalle=`${total} ${BATCH[id]?.unit||'KG'}`;
   }
   if(total<=0){toast('Ingresa una cantidad mayor a 0','error');return;}
-  const r=DB.recipes[id]; const b=BATCH[id]; const nota=document.getElementById('prod-rec-nota').value.trim();
+  const r=DB.recipes[id]; const b=BATCH[id];
 
-  // Descontar ingredientes si está activado
   if(descontar) {
     let ok=true;
     r.ingredientes.forEach(ing=>{
@@ -1592,11 +1703,8 @@ function submitProduccion() {
     date:new Date().toISOString(),
     note:`Producción ${r.nombre} — ${detalle}${descontar?' (ingredientes descontados)':''}${nota?' — '+nota:''}`
   });
-
-  // Sumar al stock de producto terminado
   if(!DB.finishedGoods[id]) DB.finishedGoods[id]={id,nombre:r.nombre,stock:0,unit:b.unit};
   DB.finishedGoods[id].stock = r2(DB.finishedGoods[id].stock + total);
-
   saveDB(); clearProdRec(); drawHistory();
   toast(`Producción de ${r.nombre} registrada ✓ (+${total} ${b.unit} al stock)`,'success');
 }
@@ -1605,6 +1713,11 @@ function clearProdRec() {
   document.getElementById('prod-rec-sel').value='';
   document.getElementById('prod-rec-nota').value='';
   if(document.getElementById('prod-rec-qty')) document.getElementById('prod-rec-qty').value='';
+  if(document.getElementById('prod-sachet-qty')) document.getElementById('prod-sachet-qty').value='';
+  document.getElementById('prod-sachet-form').style.display='none';
+  document.getElementById('prod-modo-unidades').style.display='';
+  document.getElementById('prod-modo-litros').style.display='';
+  setProdModo('unidades');
   prodFormatoRows=[{gramos:'500',cantidad:''}];
   drawProdFormatoRows();
   document.getElementById('prod-rec-preview').style.display='none';
