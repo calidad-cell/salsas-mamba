@@ -522,47 +522,60 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
 
   <!-- ▌ MOVIMIENTOS ▌ -->
   <div class="screen" id="s-movimientos">
-    <div class="screen-title">Entradas / Salidas</div>
-    <div class="screen-sub">Registra movimientos de insumos y productos</div>
+    <div class="screen-title">Movimientos</div>
+    <div class="screen-sub">Insumos · Producción · Salidas</div>
 
-    <!-- TIPO DE MOVIMIENTO PRINCIPAL -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
-      <button id="tab-insumos" class="mov-main-tab active-tab" onclick="setMovTab('insumos')">🧂 Insumos</button>
-      <button id="tab-produccion" class="mov-main-tab" onclick="setMovTab('produccion')">⚙️ Producción</button>
-      <button id="tab-productos" class="mov-main-tab" onclick="setMovTab('productos')">🍶 Salidas</button>
+    <!-- SUB-TABS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
+      <button id="tab-insumos"    class="mov-main-tab active-tab" onclick="setMovTab('insumos')">🧂 Insumos</button>
+      <button id="tab-produccion" class="mov-main-tab"            onclick="setMovTab('produccion')">⚙️ Producción</button>
+      <button id="tab-productos"  class="mov-main-tab"            onclick="setMovTab('productos')">🍶 Salidas</button>
     </div>
 
-    <!-- PANEL INSUMOS -->
+    <!-- ═══ PANEL INSUMOS ═══ -->
     <div id="panel-insumos">
+
+      <!-- Tipo entrada/salida -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <button id="ins-tipo-entrada" class="mov-type-btn sel-in" onclick="setInsTipo('entrada')">⬆ Entrada</button>
+        <button id="ins-tipo-merma"   class="mov-type-btn"        onclick="setInsTipo('merma')">🗑 Merma / Salida</button>
+      </div>
+
+      <!-- Filas de insumos -->
       <div id="mov-list"></div>
       <div class="add-dashed" onclick="addMovRow()">+ Agregar otro insumo</div>
-      <div style="display:flex;gap:10px;margin-bottom:20px">
+
+      <div style="display:flex;gap:10px;margin:12px 0 20px">
         <button class="btn btn-primary btn-full" onclick="submitMov()">✓ Registrar</button>
-        <button class="btn btn-ghost" style="width:100px" onclick="clearMov()">Limpiar</button>
+        <button class="btn btn-ghost" style="width:90px" onclick="clearMov()">Limpiar</button>
       </div>
-      <div class="section-header">
-        <div class="section-label">Historial</div>
+
+      <!-- Historial tabla exportable -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-label">Historial de Insumos</div>
+        <button class="btn btn-ghost btn-sm" onclick="exportarHistorial()">📥 Exportar</button>
       </div>
       <div id="history-list"></div>
-    </div>
 
-    <!-- PANEL PRODUCCIÓN -->
+    </div><!-- /panel-insumos -->
+
+    <!-- ═══ PANEL PRODUCCIÓN ═══ -->
     <div id="panel-produccion" style="display:none">
-      <div class="mov-card" style="margin-bottom:12px">
 
+      <div class="card">
         <div class="form-group">
-          <label class="form-label">Salsa Producida</label>
+          <label class="form-label">Salsa o Sachet a Producir</label>
           <select class="form-select" id="prod-rec-sel" onchange="onProdRecChange()">
-            <option value="">— Seleccionar salsa —</option>
+            <option value="">— Seleccionar —</option>
           </select>
         </div>
 
-        <!-- Modo cantidad -->
-        <div style="margin-bottom:10px">
+        <!-- Modo cantidad (se oculta para sachets) -->
+        <div id="prod-modo-wrap" style="margin-bottom:10px">
           <label class="form-label">Modo de Registro</label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
             <button id="prod-modo-unidades" class="mov-type-btn sel-in" onclick="setProdModo('unidades')">📦 Por Unidades</button>
-            <button id="prod-modo-litros" class="mov-type-btn" onclick="setProdModo('litros')">🧴 Por Litros/KG</button>
+            <button id="prod-modo-litros"   class="mov-type-btn"        onclick="setProdModo('litros')">🧴 Litros / KG</button>
           </div>
         </div>
 
@@ -590,35 +603,34 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
           </div>
         </div>
 
-        <!-- Formulario sachets (aparece al seleccionar S001/S002) -->
+        <!-- Sachets -->
         <div id="prod-sachet-form" style="display:none">
           <div style="background:rgba(26,127,212,0.07);border:1px solid rgba(26,127,212,0.2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px">
             <div style="font-size:12px;font-weight:800;color:var(--accent)">🧃 Envasado de Sachets</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:3px">Cada sachet descuenta <b>40 ml</b> del stock de litros del producto fuente</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px">Cada sachet descuenta <b>40 ml</b> del producto fuente</div>
           </div>
           <div class="form-group">
-            <label class="form-label">Cantidad de Sachets a Producir</label>
+            <label class="form-label">Cantidad de Sachets</label>
             <div style="display:flex;gap:10px;align-items:center">
-              <input class="form-input" type="number" id="prod-sachet-qty" min="1" step="1"
-                placeholder="ej: 100" style="flex:1;font-size:20px;font-weight:800;text-align:center"
-                oninput="updateProdSachetPreview()">
+              <input class="form-input" type="number" id="prod-sachet-qty" min="1" step="1" placeholder="ej: 100"
+                style="flex:1;font-size:22px;font-weight:800;text-align:center" oninput="updateProdSachetPreview()">
               <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:14px;font-weight:800;color:var(--muted2)">uds</div>
             </div>
           </div>
         </div>
 
-        <!-- Descuento ingredientes -->
-        <div style="margin:10px 0;padding:10px 12px;background:rgba(14,165,160,0.07);border:1px solid rgba(14,165,160,0.2);border-radius:var(--radius-sm)">
+        <!-- Checkbox descontar ingredientes -->
+        <div id="prod-descontar-wrap" style="margin:10px 0;padding:10px 12px;background:rgba(14,165,160,0.07);border:1px solid rgba(14,165,160,0.2);border-radius:var(--radius-sm)">
           <div style="display:flex;align-items:center;gap:8px">
             <input type="checkbox" id="prod-descontar" style="width:18px;height:18px;accent-color:var(--teal)" checked>
             <label for="prod-descontar" style="font-size:13px;font-weight:700;color:var(--teal)">Descontar ingredientes del stock automáticamente</label>
           </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px;margin-left:26px">Usa el factor unitario de la receta para calcular el descuento</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;margin-left:26px">Usa el factor unitario de la receta</div>
         </div>
 
-        <!-- Preview ingredientes -->
+        <!-- Preview -->
         <div id="prod-rec-preview" style="display:none;margin-top:8px">
-          <div class="card-title" style="font-size:11px">🧮 Ingredientes que se descontarán</div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted2);margin-bottom:6px">🧮 Ingredientes que se descontarán</div>
           <div id="prod-rec-ing-list"></div>
         </div>
 
@@ -626,53 +638,56 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
           <label class="form-label">Nota (opcional)</label>
           <input class="form-input" type="text" id="prod-rec-nota" placeholder="ej: lote, turno...">
         </div>
-      </div><!-- /mov-card -->
+      </div>
 
       <div style="display:flex;gap:10px;margin-bottom:20px">
         <button class="btn btn-teal btn-full" onclick="submitProduccion()">⚙️ Registrar Producción</button>
-        <button class="btn btn-ghost" style="width:100px" onclick="clearProdRec()">Limpiar</button>
+        <button class="btn btn-ghost" style="width:90px" onclick="clearProdRec()">Limpiar</button>
       </div>
-      <div class="section-header"><div class="section-label">Historial</div></div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-label">Historial de Producción</div>
+      </div>
       <div id="history-list-prod"></div>
-    </div>
 
-    <!-- PANEL PRODUCTOS -->
+    </div><!-- /panel-produccion -->
+
+    <!-- ═══ PANEL SALIDAS ═══ -->
     <div id="panel-productos" style="display:none">
-      <div class="mov-card" style="margin-bottom:12px">
 
-        <!-- Tipo salida: venta o merma -->
+      <div class="card">
+        <!-- Tipo venta/merma -->
         <div style="margin-bottom:12px">
           <label class="form-label">Tipo de Salida</label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
             <button id="tipo-venta" class="mov-type-btn sel-venta" onclick="setTipoSalida('venta')">🛒 Venta</button>
-            <button id="tipo-merma" class="mov-type-btn" onclick="setTipoSalida('merma')">🗑 Merma</button>
+            <button id="tipo-merma" class="mov-type-btn"           onclick="setTipoSalida('merma')">🗑 Merma</button>
           </div>
         </div>
 
         <!-- Selección de salsa -->
         <div class="form-group">
-          <label class="form-label">Salsa</label>
+          <label class="form-label">Producto</label>
           <select class="form-select" id="prod-salsa" onchange="onProdSalsaChange()">
-            <option value="">— Seleccionar salsa —</option>
+            <option value="">— Seleccionar producto —</option>
           </select>
         </div>
 
-        <!-- Modo de cantidad -->
+        <!-- Modo cantidad -->
         <div style="margin-bottom:10px">
           <label class="form-label">Modo de Registro</label>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px">
             <button id="modo-unidades" class="mov-type-btn sel-in" onclick="setModoQty('unidades')">📦 Por Unidades</button>
-            <button id="modo-litros" class="mov-type-btn" onclick="setModoQty('litros')">🧴 Por Litros/KG</button>
+            <button id="modo-litros"   class="mov-type-btn"        onclick="setModoQty('litros')">🧴 Litros / KG</button>
           </div>
         </div>
 
-        <!-- Por unidades: filas manuales de formato + cantidad -->
+        <!-- Por unidades -->
         <div id="modo-unidades-form">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <label class="form-label" style="margin:0">Detalle de Envases</label>
             <button class="btn btn-ghost btn-sm" onclick="addFormatoRow()">+ Añadir fila</button>
           </div>
-          <!-- encabezado -->
           <div style="display:grid;grid-template-columns:1fr 90px 60px 36px;gap:6px;padding:0 4px;margin-bottom:4px">
             <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Formato (g o ml)</div>
             <div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;text-align:center">Cantidad</div>
@@ -691,26 +706,30 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
           </div>
         </div>
 
+        <!-- Preview stock -->
+        <div id="prod-descuento-preview" style="display:none;background:rgba(26,127,212,0.05);border:1px solid rgba(26,127,212,0.15);border-radius:var(--radius-sm);padding:12px 14px;margin-top:8px">
+          <div id="prod-ing-preview"></div>
+        </div>
+
         <div class="form-group" style="margin-top:8px">
           <label class="form-label">Nota (opcional)</label>
           <input class="form-input" type="text" id="prod-nota" placeholder="ej: cliente, motivo...">
         </div>
       </div>
 
-      <!-- Preview stock producto terminado -->
-      <div id="prod-descuento-preview" style="display:none;background:rgba(26,127,212,0.05);border:1px solid rgba(26,127,212,0.15);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:12px">
-        <div id="prod-ing-preview"></div>
-      </div>
-
       <div style="display:flex;gap:10px;margin-bottom:20px">
         <button class="btn btn-primary btn-full" onclick="submitProdSalida()">✓ Registrar Salida</button>
-        <button class="btn btn-ghost" style="width:100px" onclick="clearProdForm()">Limpiar</button>
+        <button class="btn btn-ghost" style="width:90px" onclick="clearProdForm()">Limpiar</button>
       </div>
-      <div class="section-header"><div class="section-label">Historial</div></div>
-      <div id="history-list-sal"></div>
-    </div>
 
-  </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="section-label">Historial de Salidas</div>
+      </div>
+      <div id="history-list-sal"></div>
+
+    </div><!-- /panel-productos -->
+
+  </div><!-- /s-movimientos -->
 
   <!-- ▌ STOCK ▌ -->
   <div class="screen" id="s-ingredientes">
@@ -752,37 +771,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
     <div id="recipes-list"></div>
   </div>
 
-  <!-- ▌ CALCULADORA ▌ -->
-  <div class="screen" id="s-calculadora">
-    <div class="screen-title">Calculadora</div>
-    <div class="screen-sub">Ingredientes para producción objetivo</div>
-
-    <div class="card">
-      <div class="form-group">
-        <label class="form-label">Producto</label>
-        <select class="form-select" id="calc-sel" onchange="onCalcSelChange()">
-          <option value="">— Seleccionar salsa —</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Cantidad deseada</label>
-        <div style="display:flex;gap:10px">
-          <input class="form-input" type="number" id="calc-qty" value="10" min="0.1" step="0.1" style="flex:1">
-          <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;font-size:15px;font-weight:700;color:var(--muted2);white-space:nowrap;display:flex;align-items:center" id="calc-unit">L / KG</div>
-        </div>
-      </div>
-      <div id="calc-evap" class="evap-notice" style="display:none">
-        🔥 Esta salsa reduce un <b>10%</b> por evaporación — se calculará la cantidad de entrada necesaria.
-      </div>
-      <button class="btn btn-primary btn-full" style="margin-top:4px" onclick="doCalc()">Calcular ingredientes →</button>
-    </div>
-
-    <div id="calc-result"></div>
-  </div>
-
 </div><!-- /content -->
 
-<!-- BOTTOM NAV -->
+<!-- BOTTOM NAV — 4 pestañas -->
 <div id="bottom-nav">
   <div class="nav-btn active" onclick="goTo('dashboard',this)">
     <div class="nav-icon">📊</div>
@@ -799,10 +790,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);font-family:var(--fon
   <div class="nav-btn" onclick="goTo('recetas',this)">
     <div class="nav-icon">📋</div>
     <div class="nav-label">Recetas</div>
-  </div>
-  <div class="nav-btn" onclick="goTo('calculadora',this)">
-    <div class="nav-icon">🧮</div>
-    <div class="nav-label">Calcular</div>
   </div>
 </div>
 
@@ -1213,7 +1200,6 @@ function renderScreen(n) {
   if(n==='movimientos') renderMov();
   if(n==='ingredientes') renderIngs();
   if(n==='recetas')     renderRecipes();
-  if(n==='calculadora') renderCalc();
 }
 
 // ═══════ UTILS ═══════
@@ -1937,25 +1923,51 @@ function clearProdForm() {
   document.getElementById('prod-descuento-preview').style.display='none';
   document.getElementById('formatos-total').style.display='none';
 }
+// ── Tipo de entrada/merma en insumos ──
+let insTipo = 'entrada';
+function setInsTipo(tipo) {
+  insTipo = tipo;
+  document.getElementById('ins-tipo-entrada').className = `mov-type-btn ${tipo==='entrada'?'sel-in':''}`;
+  document.getElementById('ins-tipo-merma').className   = `mov-type-btn ${tipo==='merma'  ?'sel-out':''}`;
+  drawMovRows();
+}
+
 function renderMov() {
-  // Primero ocultar todos los paneles
   setMovTab('insumos');
   if(!movRows.length) addMovRow();
   else drawMovRows();
   drawHistory();
 }
+
+// ── Exportar historial como CSV ──
+function exportarHistorial() {
+  const filas = [['Fecha','Tipo','Insumo','Cantidad','Unidad','Nota']];
+  [...DB.history].filter(h=>h.type==='entrada'||h.type==='salida'||h.type==='merma')
+    .reverse().forEach(h=>{
+      h.items.forEach(it=>{
+        filas.push([
+          new Date(h.date).toLocaleString('es-CL'),
+          h.type==='entrada'?'Entrada':'Merma/Salida',
+          cap(it.nombre), it.qty, it.unidad, h.note||''
+        ]);
+      });
+    });
+  const csv = filas.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`movimientos_insumos_${new Date().toLocaleDateString('es-CL').replace(/\//g,'-')}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('Historial exportado ✓','success');
+}
 function addMovRow() {
-  movRows.push({type:'entrada',ingredient:'',qty:'',note:''});
+  movRows.push({ingredient:'',qty:'',note:''});
   drawMovRows();
 }
 function drawMovRows() {
   document.getElementById('mov-list').innerHTML = movRows.map((r,i)=>`
-    <div class="mov-card">
-      ${movRows.length>1?`<button class="btn btn-danger btn-icon" style="position:absolute;top:10px;right:10px" onclick="delMovRow(${i})">✕</button>`:''}
-      <div class="mov-type-row">
-        <button class="mov-type-btn ${r.type==='entrada'?'sel-in':''}" onclick="setMovType(${i},'entrada')">⬆ Entrada</button>
-        <button class="mov-type-btn ${r.type==='salida'?'sel-out':''}" onclick="setMovType(${i},'salida')">⬇ Salida</button>
-      </div>
+    <div class="mov-card" style="margin-bottom:10px">
+      ${movRows.length>1?`<button class="btn btn-danger btn-icon" style="position:absolute;top:10px;right:10px;width:36px;height:36px;font-size:14px" onclick="delMovRow(${i})">✕</button>`:''}
       <div class="form-group">
         <label class="form-label">Insumo</label>
         <select class="form-select" onchange="movRows[${i}].ingredient=this.value">
@@ -1964,33 +1976,43 @@ function drawMovRows() {
         </select>
       </div>
       <div class="form-row2">
-        <div class="form-group"><label class="form-label">Cantidad</label><input class="form-input" type="number" min="0" step="0.01" value="${r.qty}" placeholder="0" onchange="movRows[${i}].qty=this.value"></div>
-        <div class="form-group"><label class="form-label">Nota</label><input class="form-input" type="text" value="${r.note}" placeholder="opcional" onchange="movRows[${i}].note=this.value"></div>
+        <div class="form-group"><label class="form-label">Cantidad</label>
+          <input class="form-input" type="number" min="0" step="0.01" value="${r.qty}" placeholder="0" onchange="movRows[${i}].qty=this.value">
+        </div>
+        <div class="form-group"><label class="form-label">Nota</label>
+          <input class="form-input" type="text" value="${r.note}" placeholder="opcional" onchange="movRows[${i}].note=this.value">
+        </div>
       </div>
     </div>`).join('');
 }
 function setMovType(i,t){movRows[i].type=t;drawMovRows()}
-function delMovRow(i){movRows.splice(i,1);drawMovRows()}
-function clearMov(){movRows=[];addMovRow()}
+function delMovRow(i){movRows.splice(i,1);if(!movRows.length)movRows=[{ingredient:'',qty:'',note:''}];drawMovRows()}
+function clearMov(){movRows=[];addMovRow();insTipo='entrada';setInsTipo('entrada');}
 function submitMov() {
   const valid = movRows.filter(r=>r.ingredient&&r.qty&&parseFloat(r.qty)>0);
   if(!valid.length){toast('Completa al menos un insumo','error');return;}
-  let ok=true;
+  if(insTipo!=='entrada') {
+    let ok=true;
+    valid.forEach(r=>{
+      const ing=DB.ingredients[r.ingredient];if(!ing)return;
+      if(ing.stock<parseFloat(r.qty)){toast(`Stock insuficiente: ${r.ingredient}`,'error');ok=false;}
+    });
+    if(!ok)return;
+  }
   valid.forEach(r=>{
     const ing=DB.ingredients[r.ingredient];if(!ing)return;
     const q=parseFloat(r.qty);
-    if(r.type==='salida'&&ing.stock<q){toast(`Stock insuficiente: ${r.ingredient}`,'error');ok=false;}
+    if(insTipo==='entrada') ing.stock=r2(ing.stock+q);
+    else ing.stock=r2(Math.max(0,ing.stock-q));
   });
-  if(!ok)return;
-  valid.forEach(r=>{
-    const ing=DB.ingredients[r.ingredient];if(!ing)return;
-    const q=parseFloat(r.qty);
-    if(r.type==='entrada') ing.stock=r2(ing.stock+q);
-    else ing.stock=r2(ing.stock-q);
+  DB.history.push({
+    id:Date.now(), type:insTipo,
+    items:valid.map(r=>({nombre:r.ingredient,qty:parseFloat(r.qty),unidad:DB.ingredients[r.ingredient]?.unidad||''})),
+    date:new Date().toISOString(),
+    note:valid.map(r=>r.note).filter(Boolean).join(', ')
   });
-  DB.history.push({id:Date.now(),type:valid[0].type,items:valid.map(r=>({nombre:r.ingredient,qty:parseFloat(r.qty),unidad:DB.ingredients[r.ingredient]?.unidad||''})),date:new Date().toISOString(),note:valid.map(r=>r.note).filter(Boolean).join(', ')});
   saveDB();clearMov();drawHistory();
-  toast(`${valid.length} movimiento(s) registrado(s)`,'success');
+  toast(`${valid.length} movimiento(s) de ${insTipo==='entrada'?'entrada':'merma'} registrado(s)`,'success');
 }
 function drawHistory() {
   const items = [...DB.history].reverse().slice(0,30);
